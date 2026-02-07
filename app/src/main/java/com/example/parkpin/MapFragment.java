@@ -26,15 +26,12 @@ import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 import org.osmdroid.bonuspack.routing.OSRMRoadManager;
 import org.osmdroid.bonuspack.routing.Road;
 import org.osmdroid.bonuspack.routing.RoadManager;
-import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.overlay.Polyline;
-import java.util.ArrayList;
-import android.os.StrictMode; // Serve per evitare blocchi su vecchi Android
 
+import java.util.ArrayList;
+
+// Import per la ricerca
 import com.example.parkpin.data.OverpassResponse;
-
-import java.util.ArrayList;
-
 import retrofit2.Call;
 import retrofit2.Response;
 
@@ -43,24 +40,24 @@ public class MapFragment extends Fragment {
 
     private MapView map = null;
     private MyLocationNewOverlay myLocationOverlay; // Il "Pallino Blu"
+    private Polyline currentRoute = null; // Variabile per ricordare la linea blu attuale
 
+    private android.widget.Button btnStopNav;
+    private GeoPoint destinazioneCorrente = null;
+    private org.osmdroid.views.overlay.Marker currentMarker = null;
     // Gestore moderno dei Permessi
-    // Appena l'utente risponde "Sì" o "No", questo codice viene eseguito
     private final ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
                 if (isGranted) {
-                    attivaPosizioneUtente(); // Ha detto sì! Accendi il GPS
+                    attivaPosizioneUtente();
                 }
             });
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Carica configurazione Osmdroid
         Context ctx = requireActivity().getApplicationContext();
         Configuration.getInstance().load(ctx, PreferenceManager.getDefaultSharedPreferences(ctx));
-
-        // Carica il layout (quello col FrameLayout che abbiamo sistemato)
         return inflater.inflate(R.layout.fragment_map, container, false);
     }
 
@@ -68,27 +65,65 @@ public class MapFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // =================================================================
         // 1. INIZIALIZZAZIONE MAPPA
-        // =================================================================
         map = view.findViewById(R.id.map);
         map.setTileSource(TileSourceFactory.MAPNIK);
-        map.setMultiTouchControls(true);
-        map.getController().setZoom(15.0);
+        map.setMultiTouchControls(true);if (savedInstanceState != null) {
+            // A. Ripristina Zoom e Posizione
+            double zoom = savedInstanceState.getDouble("zoom_level", 15.0);
+            double lat = savedInstanceState.getDouble("center_lat", 41.8902); // Default Roma
+            double lon = savedInstanceState.getDouble("center_lon", 12.4922);
 
-        // =================================================================
+            map.getController().setZoom(zoom);
+            map.getController().setCenter(new GeoPoint(lat, lon));
+
+            // B. Ripristina il percorso (se c'era)
+            if (savedInstanceState.getBoolean("ha_percorso", false)) {
+                double destLat = savedInstanceState.getDouble("dest_lat");
+                double destLon = savedInstanceState.getDouble("dest_lon");
+
+                // Dobbiamo aspettare che il GPS si riattivi per avere il punto di partenza
+                // Usiamo un piccolo trucco: posticipiamo il calcolo di 1 secondo
+                map.postDelayed(() -> {
+                    if (myLocationOverlay != null && myLocationOverlay.getMyLocation() != null) {
+                        GeoPoint start = myLocationOverlay.getMyLocation();
+                        GeoPoint end = new GeoPoint(destLat, destLon);
+                        disegnaPercorsoSullaMappa(start, end);
+                    }
+                }, 1000);
+            }
+        } else {
+            // Primo avvio assoluto: usa Zoom default
+            map.getController().setZoom(18.0);
+        }
+        View btnCentra = view.findViewById(R.id.fab_centra_posizione);
+        if (btnCentra != null) {
+            btnCentra.setOnClickListener(v -> {
+                if (myLocationOverlay != null && myLocationOverlay.getMyLocation() != null) {
+                    // 1. Porta la mappa su di te con un'animazione fluida
+                    map.getController().animateTo(myLocationOverlay.getMyLocation());
+
+                    // 2. Resetta lo zoom a un livello comodo
+                    map.getController().setZoom(18.0);
+
+                    // 3. RIAGGANCIA la telecamera (così se ti muovi, la mappa ti segue di nuovo)
+                    myLocationOverlay.enableFollowLocation();
+
+                    android.widget.Toast.makeText(requireContext(), "Posizione centrata", android.widget.Toast.LENGTH_SHORT).show();
+                } else {
+                    android.widget.Toast.makeText(requireContext(), "Posizione non ancora disponibile", android.widget.Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
         // 2. BOTTONE "GOOGLE MAPS" (Navigazione Esterna)
-        // =================================================================
         android.widget.Button btnGoogle = view.findViewById(R.id.btn_google_maps);
-
         if (btnGoogle != null) {
             btnGoogle.setOnClickListener(v -> {
-                // Coordinate precise del Colosseo (Lat, Lon)
+                // Esempio statico su Roma (o potresti passare le coordinate del parcheggio selezionato)
                 android.net.Uri gmmIntentUri = android.net.Uri.parse("google.navigation:q=41.8902,12.4922");
-
                 android.content.Intent mapIntent = new android.content.Intent(android.content.Intent.ACTION_VIEW, gmmIntentUri);
-                mapIntent.setPackage("com.google.android.apps.maps"); // Forza Google Maps
-
+                mapIntent.setPackage("com.google.android.apps.maps");
                 try {
                     startActivity(mapIntent);
                 } catch (Exception e) {
@@ -97,31 +132,10 @@ public class MapFragment extends Fragment {
             });
         }
 
-        // =================================================================
-        // 3. BOTTONE "LINEA BLU" (Navigazione Interna)
-        // =================================================================
-        android.widget.Button btnInterno = view.findViewById(R.id.btn_percorso_interno);
+        // --- NOTA: Ho rimosso il listener del bottone "Linea Blu" btn_percorso_interno ---
+        // Ora il percorso si attiva scegliendo dalla lista parcheggi.
 
-        if (btnInterno != null) {
-            btnInterno.setOnClickListener(v -> {
-                // Controlliamo se il GPS ha agganciato la posizione
-                if (myLocationOverlay == null || myLocationOverlay.getMyLocation() == null) {
-                    android.widget.Toast.makeText(requireContext(), "Attendi segnale GPS...", android.widget.Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                // Punti di Partenza (Tu) e Arrivo (Roma)
-                org.osmdroid.util.GeoPoint start = myLocationOverlay.getMyLocation();
-                org.osmdroid.util.GeoPoint end = new org.osmdroid.util.GeoPoint(41.035679, 14.518649);
-
-                // Chiama la funzione che disegna la linea (quella col Thread)
-                disegnaPercorsoSullaMappa(start, end);
-            });
-        }
-
-        // =================================================================
-        // BOTTONE 3: TROVA PARCHEGGI (Overpass API)
-        // =================================================================
+        // 3. BOTTONE TROVA PARCHEGGI (Overpass API)
         android.widget.Button btnParcheggi = view.findViewById(R.id.btn_cerca_parcheggi);
         if (btnParcheggi != null) {
             btnParcheggi.setOnClickListener(v -> {
@@ -130,193 +144,311 @@ public class MapFragment extends Fragment {
                     android.widget.Toast.makeText(requireContext(), "Attendi GPS...", android.widget.Toast.LENGTH_SHORT).show();
                     return;
                 }
-
                 // 2. Coordinate attuali
                 double lat = myLocationOverlay.getMyLocation().getLatitude();
                 double lon = myLocationOverlay.getMyLocation().getLongitude();
-
-                // 3. Chiama la funzione di ricerca
+                // 3. Cerca
                 cercaParcheggiVicini(lat, lon);
             });
         }
 
-        // =================================================================
         // 4. BOTTONE SALVA (FAB)
-        // =================================================================
         com.google.android.material.floatingactionbutton.FloatingActionButton fab = view.findViewById(R.id.fab_salva);
         if (fab != null) {
             fab.setOnClickListener(v -> {
                 android.widget.Toast.makeText(requireContext(), "Funzione Salva in arrivo...", android.widget.Toast.LENGTH_SHORT).show();
             });
         }
+        btnStopNav = view.findViewById(R.id.btn_stop_navigazione);
 
-        // =================================================================
+        btnStopNav.setOnClickListener(v -> {
+            stopNavigazione(); // Chiamiamo la funzione di pulizia
+        });
+
         // 5. GESTIONE PERMESSI GPS
-        // =================================================================
-        if (androidx.core.content.ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            // Permesso già dato -> Accendi pallino blu
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             attivaPosizioneUtente();
         } else {
-            // Permesso mancante -> Chiedilo
-            requestPermissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION);
+            requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
         }
     }
 
-
-
-
-    // Questa funzione accende il pallino blu
+    // Questa funzione accende il pallino blu (o l'omino!)
     private void attivaPosizioneUtente() {
-        // Crea il layer che mostra la posizione
         myLocationOverlay = new MyLocationNewOverlay(new GpsMyLocationProvider(requireContext()), map);
+        myLocationOverlay.enableMyLocation();
+        myLocationOverlay.enableFollowLocation();
 
-        myLocationOverlay.enableMyLocation(); // Attiva il sensore GPS
-        myLocationOverlay.enableFollowLocation(); // La mappa segue l'utente se si muove
+        // =================================================================
+        // CAMBIAMO L'ICONA CON L'OMINO VETTORIALE
+        // =================================================================
 
-        // Aggiunge il layer sopra la mappa
+        // 1. Convertiamo il Vector (xml) in Bitmap (immagine)
+        // Assicurati di aver creato l'icona "ic_baseline_person_24" come spiegato sopra!
+        // Se l'hai chiamata diversamente, cambia il nome qui sotto.
+        android.graphics.Bitmap omino = getBitmapFromVectorDrawable(requireContext(), R.drawable.baseline_directions_car_24);
+
+        if (omino != null) {
+            myLocationOverlay.setPersonIcon(omino);    // Icona quando sei fermo
+            myLocationOverlay.setDirectionIcon(omino); // Icona quando ti muovi
+        }
+        // =================================================================
+
         map.getOverlays().add(myLocationOverlay);
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        if (map != null) map.onResume();
-        if (myLocationOverlay != null) myLocationOverlay.enableMyLocation();
+    // --- FUNZIONE DI SUPPORTO PER CONVERTIRE VETTORI IN BITMAP ---
+    public static android.graphics.Bitmap getBitmapFromVectorDrawable(Context context, int drawableId) {
+        android.graphics.drawable.Drawable drawable = androidx.core.content.ContextCompat.getDrawable(context, drawableId);
+        if (drawable == null) return null;
+
+        // Se vuoi ingrandire l'omino, cambia questi numeri (es. 100, 100)
+        android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
+                drawable.getIntrinsicWidth() * 2, // *2 lo rende più grande e visibile
+                drawable.getIntrinsicHeight() * 2,
+                android.graphics.Bitmap.Config.ARGB_8888);
+
+        android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
+        drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+        drawable.draw(canvas);
+        return bitmap;
     }
 
     @Override
     public void onPause() {
         super.onPause();
         if (map != null) map.onPause();
-        if (myLocationOverlay != null) myLocationOverlay.disableMyLocation(); // Risparmia batteria
+        if (myLocationOverlay != null) myLocationOverlay.disableMyLocation();
+
+        // SALVATAGGIO PERMANENTE (SharedPreferences)
+        if (map != null) {
+            android.content.SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinPrefs", Context.MODE_PRIVATE);
+            android.content.SharedPreferences.Editor editor = prefs.edit();
+
+            editor.putFloat("last_lat", (float) map.getMapCenter().getLatitude());
+            editor.putFloat("last_lon", (float) map.getMapCenter().getLongitude());
+            editor.putFloat("last_zoom", (float) map.getZoomLevelDouble());
+            editor.apply();
+        }
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (map != null) map.onResume();
 
-    // Funzione che calcola la strada usando OSRM (Open Source Routing Machine)
-    private void disegnaPercorsoSullaMappa(GeoPoint start, GeoPoint end) {
-        android.widget.Toast.makeText(requireContext(), "Calcolo percorso...", android.widget.Toast.LENGTH_SHORT).show();
+        if (myLocationOverlay != null) {
+            myLocationOverlay.enableMyLocation();
 
-        new Thread(() -> {
-            try {
-                // 1. Setup del RoadManager (usa i server gratuiti di OSRM)
-                RoadManager roadManager = new OSRMRoadManager(requireContext(), "ParkPin-UserAgent");
+            myLocationOverlay.runOnFirstFix(() -> {
+                requireActivity().runOnUiThread(() -> {
+                    android.content.SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
+                    boolean eraInNavigazione = prefs.getBoolean("navigazione_attiva", false);
 
-                // 2. Definisci i punti (Partenza -> Arrivo)
-                ArrayList<GeoPoint> waypoints = new ArrayList<>();
-                waypoints.add(start);
-                waypoints.add(end);
+                    if (eraInNavigazione) {
+                        double destLat = prefs.getFloat("dest_lat", 0);
+                        double destLon = prefs.getFloat("dest_lon", 0);
+                        String destNome = prefs.getString("dest_nome", "Destinazione");
 
-                // 3. Ottieni la strada (Richiesta Internet)
-                Road road = roadManager.getRoad(waypoints);
+                        GeoPoint start = myLocationOverlay.getMyLocation();
+                        GeoPoint end = new GeoPoint(destLat, destLon);
 
-                // 4. Se la strada è valida, disegnala
-                if (road.mStatus == Road.STATUS_OK) {
-                    // Crea la linea colorata
-                    Polyline roadOverlay = RoadManager.buildRoadOverlay(road);
-                    roadOverlay.getOutlinePaint().setColor(android.graphics.Color.BLUE); // Colore Blu
-                    roadOverlay.getOutlinePaint().setStrokeWidth(15.0f); // Spessore
+                        disegnaPercorsoSullaMappa(start, end);
+                        mettiMarkerDestinazione(end, destNome);
 
-                    // Torna al Thread principale per aggiornare la grafica
-                    requireActivity().runOnUiThread(() -> {
-                        map.getOverlays().add(roadOverlay); // Aggiungi la linea
-                        map.invalidate(); // Ridisegna
-
-                        // Zoomma per far vedere tutto il viaggio
-                        map.zoomToBoundingBox(road.mBoundingBox, true);
-                    });
-                } else {
-                    requireActivity().runOnUiThread(() ->
-                            android.widget.Toast.makeText(requireContext(), "Errore percorso!", android.widget.Toast.LENGTH_SHORT).show()
-                    );
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }).start();
+                        // --- AGGIUNGI QUESTA RIGA ---
+                        btnStopNav.setVisibility(View.VISIBLE); // Fai tornare il bottone!
+                        // ----------------------------
+                    } else {
+                        // Se non c'era navigazione, assicuriamoci che sia nascosto
+                        btnStopNav.setVisibility(View.GONE);
+                    }
+                });
+            });
+        }
     }
 
-
-
+    // =============================================================
+    // FUNZIONE DI RICERCA PARCHEGGI
+    // =============================================================
     private void cercaParcheggiVicini(double lat, double lon) {
         android.widget.Toast.makeText(requireContext(), "Cerco parcheggi...", android.widget.Toast.LENGTH_SHORT).show();
 
-        // 1. Creiamo un Retrofit "volante" specifico per Overpass (perché l'URL è diverso da Nominatim)
         retrofit2.Retrofit retrofitOverpass = new retrofit2.Retrofit.Builder()
-                .baseUrl("https://overpass-api.de/api/") // URL Base di Overpass
+                .baseUrl("https://overpass-api.de/api/")
                 .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
                 .build();
 
         OverpassService service = retrofitOverpass.create(OverpassService.class);
 
-        // 2. Costruiamo la query nel linguaggio Overpass QL
-        // [out:json];node["amenity"="parking"](around:5000, lat, lon);out;
-        // 5000 = raggio in metri (5km). Metti 10000 per 10km.
-        String query = "[out:json];node[\"amenity\"=\"parking\"](around:1000," + lat + "," + lon + ");out;";
-        // 3. Chiamata di rete (Nota come uso .data.OverpassResponse)
+        // Cerca parcheggi entro 5000 metri
+        String query = "[out:json];node[\"amenity\"=\"parking\"](around:5000," + lat + "," + lon + ");out;";
+
         service.cercaParcheggi(query).enqueue(new retrofit2.Callback<com.example.parkpin.data.OverpassResponse>() {
             @Override
-            public void onResponse(retrofit2.Call<com.example.parkpin.data.OverpassResponse> call, retrofit2.Response<com.example.parkpin.data.OverpassResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    // Controlliamo se la lista esiste
-                    if (response.body().elementi != null) {
-                        mostraListaParcheggi(response.body().elementi);
-                    } else {
-                        android.widget.Toast.makeText(requireContext(), "Nessun parcheggio trovato.", android.widget.Toast.LENGTH_SHORT).show();
-                    }
+            public void onResponse(Call<OverpassResponse> call, Response<OverpassResponse> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().elementi != null) {
+                    mostraListaParcheggi(response.body().elementi);
                 } else {
-                    android.widget.Toast.makeText(requireContext(), "Errore server.", android.widget.Toast.LENGTH_SHORT).show();
+                    android.widget.Toast.makeText(requireContext(), "Nessun parcheggio trovato.", android.widget.Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
-            public void onFailure(retrofit2.Call<com.example.parkpin.data.OverpassResponse> call, Throwable t) {
+            public void onFailure(Call<OverpassResponse> call, Throwable t) {
                 android.widget.Toast.makeText(requireContext(), "Errore connessione!", android.widget.Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    // Funzione per mostrare la lista a schermo (Dialog)
+    // =============================================================
+    // MOSTRA LISTA E AVVIA NAVIGAZIONE AL CLICK
+    // =============================================================
     private void mostraListaParcheggi(java.util.List<com.example.parkpin.data.OverpassResponse.Elemento> lista) {
         if (lista.isEmpty()) {
             android.widget.Toast.makeText(requireContext(), "Nessun parcheggio in zona.", android.widget.Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Creiamo due array: uno per i nomi (da mostrare) e uno per gli oggetti veri
         String[] nomiParcheggi = new String[lista.size()];
-
         for (int i = 0; i < lista.size(); i++) {
             com.example.parkpin.data.OverpassResponse.Elemento p = lista.get(i);
-            // Se ha un nome usalo, altrimenti scrivi "Parcheggio senza nome"
-            String nome = (p.tags != null && p.tags.nome != null) ? p.tags.nome : "Parcheggio pubblico (" + (i+1) + ")";
-            nomiParcheggi[i] = nome;
+            nomiParcheggi[i] = (p.tags != null && p.tags.nome != null) ? p.tags.nome : "Parcheggio (" + (i+1) + ")";
         }
 
-        // Costruiamo il Dialogo
         new android.app.AlertDialog.Builder(requireContext())
-                .setTitle("Parcheggi Vicini (5km)")
+                .setTitle("Seleziona Parcheggio")
                 .setItems(nomiParcheggi, (dialog, which) -> {
-                    // L'utente ha cliccato sull'elemento numero 'which'
                     com.example.parkpin.data.OverpassResponse.Elemento selezionato = lista.get(which);
+                    String nomeParcheggio = nomiParcheggi[which];
 
-                    // 1. Sposta la mappa lì
-                    org.osmdroid.util.GeoPoint punto = new org.osmdroid.util.GeoPoint(selezionato.lat, selezionato.lon);
-                    map.getController().animateTo(punto);
+                    GeoPoint puntoArrivo = new GeoPoint(selezionato.lat, selezionato.lon);
+
+                    // 1. Salva in memoria
+                    android.content.SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
+                    prefs.edit()
+                            .putBoolean("navigazione_attiva", true)
+                            .putFloat("dest_lat", (float) selezionato.lat)
+                            .putFloat("dest_lon", (float) selezionato.lon)
+                            .putString("dest_nome", nomeParcheggio)
+                            .apply();
+
+                    // --- AGGIUNGI QUESTA RIGA QUI SOTTO ---
+                    btnStopNav.setVisibility(View.VISIBLE); // Il bottone rosso appare!
+                    // --------------------------------------
+
+                    // 2. Calcola percorso
+                    if (myLocationOverlay != null && myLocationOverlay.getMyLocation() != null) {
+                        disegnaPercorsoSullaMappa(myLocationOverlay.getMyLocation(), puntoArrivo);
+                    }
+
+                    // 3. Sposta mappa e marker
+                    map.getController().animateTo(puntoArrivo);
                     map.getController().setZoom(18.0);
-
-                    // 2. Metti un marker
-                    org.osmdroid.views.overlay.Marker m = new org.osmdroid.views.overlay.Marker(map);
-                    m.setPosition(punto);
-                    m.setTitle("Parcheggio");
-                    m.setSnippet(nomiParcheggi[which]);
-                    m.setIcon(androidx.core.content.ContextCompat.getDrawable(requireContext(), android.R.drawable.ic_menu_myplaces)); // Icona standard
-
-                    map.getOverlays().add(m);
-                    map.invalidate(); // Ridisegna
-
-                    android.widget.Toast.makeText(requireContext(), "Selezionato: " + nomiParcheggi[which], android.widget.Toast.LENGTH_SHORT).show();
+                    mettiMarkerDestinazione(puntoArrivo, nomeParcheggio);
                 })
                 .setNegativeButton("Chiudi", null)
                 .show();
+    }
+    // =============================================================
+    // DISEGNA LINEA BLU (Aggiornato per pulire vecchie linee)
+    // =============================================================
+    private void disegnaPercorsoSullaMappa(GeoPoint start, GeoPoint end) {
+        // 1. SALVIAMO LA DESTINAZIONE NELLA MEMORIA PERMANENTE
+        android.content.SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
+        prefs.edit()
+                .putBoolean("navigazione_attiva", true)
+                .putFloat("dest_lat", (float) end.getLatitude())
+                .putFloat("dest_lon", (float) end.getLongitude())
+                .apply(); // Salva subito!
+
+        android.widget.Toast.makeText(requireContext(), "Calcolo percorso...", android.widget.Toast.LENGTH_SHORT).show();
+
+        new Thread(() -> {
+            try {
+                RoadManager roadManager = new OSRMRoadManager(requireContext(), "ParkPin-UserAgent");
+                ArrayList<GeoPoint> waypoints = new ArrayList<>();
+                waypoints.add(start);
+                waypoints.add(end);
+
+                Road road = roadManager.getRoad(waypoints);
+
+                if (road.mStatus == Road.STATUS_OK) {
+                    Polyline newRoadOverlay = RoadManager.buildRoadOverlay(road);
+                    newRoadOverlay.getOutlinePaint().setColor(android.graphics.Color.BLUE);
+                    newRoadOverlay.getOutlinePaint().setStrokeWidth(15.0f);
+
+                    requireActivity().runOnUiThread(() -> {
+                        if (currentRoute != null) map.getOverlays().remove(currentRoute);
+                        currentRoute = newRoadOverlay;
+                        map.getOverlays().add(currentRoute);
+                        map.invalidate();
+                        map.zoomToBoundingBox(road.mBoundingBox, true);
+                    });
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        if (map != null) {
+            // 1. Salva Zoom e Centro Mappa
+            outState.putDouble("zoom_level", map.getZoomLevelDouble());
+            outState.putDouble("center_lat", map.getMapCenter().getLatitude());
+            outState.putDouble("center_lon", map.getMapCenter().getLongitude());
+
+            // 2. Salva il percorso (se esiste)
+            if (destinazioneCorrente != null) {
+                outState.putBoolean("ha_percorso", true);
+                outState.putDouble("dest_lat", destinazioneCorrente.getLatitude());
+                outState.putDouble("dest_lon", destinazioneCorrente.getLongitude());
+            }
+        }
+    }
+    // Funzione che mette (o rimette) il marker rosso sulla mappa
+    private void mettiMarkerDestinazione(GeoPoint punto, String titolo) {
+        // 1. Se c'era già un vecchio marker, toglilo (pulizia)
+        if (currentMarker != null) {
+            map.getOverlays().remove(currentMarker);
+        }
+
+        // 2. Crea il nuovo marker
+        currentMarker = new org.osmdroid.views.overlay.Marker(map);
+        currentMarker.setPosition(punto);
+        currentMarker.setTitle("Destinazione");
+        currentMarker.setSnippet(titolo);
+        currentMarker.setIcon(androidx.core.content.ContextCompat.getDrawable(requireContext(), org.osmdroid.library.R.drawable.marker_default));
+
+        // 3. Aggiungi alla mappa e ridisegna
+        map.getOverlays().add(currentMarker);
+        map.invalidate();
+    }
+    private void stopNavigazione() {
+        // 1. Pulisci la memoria (così non ricompare se ruoti)
+        android.content.SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
+        prefs.edit().clear().apply();
+
+        // 2. Rimuovi la linea blu
+        if (currentRoute != null) {
+            map.getOverlays().remove(currentRoute);
+            currentRoute = null;
+        }
+
+        // 3. Rimuovi il marker destinazione
+        if (currentMarker != null) {
+            map.getOverlays().remove(currentMarker);
+            currentMarker = null;
+        }
+
+        // 4. Nascondi il bottone Stop
+        btnStopNav.setVisibility(View.GONE);
+
+        // 5. Aggiorna la mappa
+        map.invalidate();
+        android.widget.Toast.makeText(requireContext(), "Navigazione annullata", android.widget.Toast.LENGTH_SHORT).show();
     }
 }
