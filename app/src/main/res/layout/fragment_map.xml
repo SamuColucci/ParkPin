@@ -1,81 +1,114 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
-    <LinearLayout
+    android:background="@color/parkpin_bg">
+
+    <org.osmdroid.views.MapView
+        android:id="@+id/map"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:padding="10dp"
-        android:background="#FFFFFF"
-        android:elevation="4dp">
+        android:layout_margin="16dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="8dp"
+        app:cardBackgroundColor="@android:color/white">
 
-        <Button
-            android:id="@+id/btn_google_maps"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Maps"
-            android:backgroundTint="#4CAF50"
-            android:textColor="@android:color/white"
-            android:layout_marginEnd="8dp"/>
-
-        <Button
-            android:id="@+id/btn_cerca_parcheggi"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Cerca 🅿️"
-            android:backgroundTint="#2196F3"
-            android:textColor="@android:color/white"
-            android:layout_marginEnd="8dp"/>
-
-        <Button
-            android:id="@+id/btn_stop_navigazione"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Stop ❌"
-            android:backgroundTint="#F44336"
-            android:textColor="@android:color/white"
-            android:visibility="gone" />
-    </LinearLayout>
-
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-        <org.osmdroid.views.MapView
-            android:id="@+id/map"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="8dp"
+            android:gravity="center_vertical">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@android:drawable/ic_menu_search"
+                app:tint="#B0BEC5"
+                android:layout_marginStart="8dp"/>
+
+            <Button
+                android:id="@+id/btn_cerca_parcheggi"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Cerca Parcheggio..."
+                android:textColor="@color/parkpin_text"
+                android:background="@android:color/transparent"
+                android:gravity="start|center_vertical"
+                android:textAllCaps="false"
+                android:textSize="16sp"/>
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="24dp"
+                android:background="#ECEFF1"
+                android:layout_marginHorizontal="4dp"/>
+
+            <ImageButton
+                android:id="@+id/btn_google_maps"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_dialog_map"
+                app:tint="@color/parkpin_blue"
+                android:contentDescription="Apri Maps" />
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_stop_navigazione"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="80dp"
+        android:text="Termina Guida ❌"
+        android:textColor="@android:color/white"
+        android:backgroundTint="@color/parkpin_danger"
+        app:cornerRadius="20dp"
+        app:elevation="6dp"
+        android:visibility="gone"
+        />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="32dp"
+        android:gravity="center_horizontal">
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fab_centra_posizione"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom|end"
-            android:layout_marginEnd="24dp"
-            android:layout_marginBottom="100dp"
+            android:layout_marginBottom="16dp"
             android:src="@android:drawable/ic_menu_mylocation"
-            app:backgroundTint="@android:color/white"
-            app:tint="#000000"
-            android:contentDescription="Centra Mappa" />
+            app:backgroundTint="@color/white"
+            app:tint="@color/parkpin_blue"
+            app:fabSize="mini"
+            app:borderWidth="0dp"
+            app:elevation="6dp"/>
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fab_salva"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom|end"
-            android:layout_marginEnd="24dp"
-            android:layout_marginBottom="24dp"
             android:src="@android:drawable/ic_input_add"
-            app:backgroundTint="@color/design_default_color_primary"
-            app:tint="@android:color/white"
-            android:contentDescription="Salva Posizione" />
+            app:backgroundTint="@color/parkpin_blue"
+            app:tint="@color/white"
+            app:fabSize="normal"
+            app:borderWidth="0dp"
+            app:elevation="8dp"/>
 
-    </FrameLayout>
+    </LinearLayout>
 
-</LinearLayout>
+</FrameLayout>

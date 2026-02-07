@@ -116,18 +116,35 @@ public class MapFragment extends Fragment {
             });
         }
 
-        // 2. BOTTONE "GOOGLE MAPS" (Navigazione Esterna)
-        android.widget.Button btnGoogle = view.findViewById(R.id.btn_google_maps);
+        // =================================================================
+        // 2. BOTTONE "GOOGLE MAPS" (DINAMICO)
+        // =================================================================
+        android.widget.ImageButton btnGoogle = view.findViewById(R.id.btn_google_maps);
+
         if (btnGoogle != null) {
             btnGoogle.setOnClickListener(v -> {
-                // Esempio statico su Roma (o potresti passare le coordinate del parcheggio selezionato)
-                android.net.Uri gmmIntentUri = android.net.Uri.parse("google.navigation:q=41.8902,12.4922");
-                android.content.Intent mapIntent = new android.content.Intent(android.content.Intent.ACTION_VIEW, gmmIntentUri);
-                mapIntent.setPackage("com.google.android.apps.maps");
-                try {
-                    startActivity(mapIntent);
-                } catch (Exception e) {
-                    android.widget.Toast.makeText(requireContext(), "Google Maps non trovato!", android.widget.Toast.LENGTH_SHORT).show();
+                // 1. Recuperiamo la destinazione dalla memoria del telefono
+                android.content.SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
+                boolean isNavigating = prefs.getBoolean("navigazione_attiva", false);
+
+                if (isNavigating) {
+                    // A. Se c'è una guida attiva, prendiamo quelle coordinate
+                    float lat = prefs.getFloat("dest_lat", 0);
+                    float lon = prefs.getFloat("dest_lon", 0);
+
+                    // Apri Google Maps verso il parcheggio
+                    android.net.Uri gmmIntentUri = android.net.Uri.parse("google.navigation:q=" + lat + "," + lon);
+                    android.content.Intent mapIntent = new android.content.Intent(android.content.Intent.ACTION_VIEW, gmmIntentUri);
+                    mapIntent.setPackage("com.google.android.apps.maps");
+
+                    try {
+                        startActivity(mapIntent);
+                    } catch (Exception e) {
+                        android.widget.Toast.makeText(requireContext(), "Google Maps non installato!", android.widget.Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    // B. Se NON hai selezionato nulla, avvisa l'utente
+                    android.widget.Toast.makeText(requireContext(), "Seleziona prima un parcheggio!", android.widget.Toast.LENGTH_SHORT).show();
                 }
             });
         }
