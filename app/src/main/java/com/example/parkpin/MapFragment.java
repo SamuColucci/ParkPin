@@ -31,7 +31,12 @@ import org.osmdroid.views.overlay.Polyline;
 import java.util.ArrayList;
 import android.os.StrictMode; // Serve per evitare blocchi su vecchi Android
 
+import com.example.parkpin.data.OverpassResponse;
+
 import java.util.ArrayList;
+
+import retrofit2.Call;
+import retrofit2.Response;
 
 
 public class MapFragment extends Fragment {
@@ -111,6 +116,27 @@ public class MapFragment extends Fragment {
 
                 // Chiama la funzione che disegna la linea (quella col Thread)
                 disegnaPercorsoSullaMappa(start, end);
+            });
+        }
+
+        // =================================================================
+        // BOTTONE 3: TROVA PARCHEGGI (Overpass API)
+        // =================================================================
+        android.widget.Button btnParcheggi = view.findViewById(R.id.btn_cerca_parcheggi);
+        if (btnParcheggi != null) {
+            btnParcheggi.setOnClickListener(v -> {
+                // 1. Controllo GPS
+                if (myLocationOverlay == null || myLocationOverlay.getMyLocation() == null) {
+                    android.widget.Toast.makeText(requireContext(), "Attendi GPS...", android.widget.Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                // 2. Coordinate attuali
+                double lat = myLocationOverlay.getMyLocation().getLatitude();
+                double lon = myLocationOverlay.getMyLocation().getLongitude();
+
+                // 3. Chiama la funzione di ricerca
+                cercaParcheggiVicini(lat, lon);
             });
         }
 
@@ -207,5 +233,90 @@ public class MapFragment extends Fragment {
                 e.printStackTrace();
             }
         }).start();
+    }
+
+
+
+    private void cercaParcheggiVicini(double lat, double lon) {
+        android.widget.Toast.makeText(requireContext(), "Cerco parcheggi...", android.widget.Toast.LENGTH_SHORT).show();
+
+        // 1. Creiamo un Retrofit "volante" specifico per Overpass (perché l'URL è diverso da Nominatim)
+        retrofit2.Retrofit retrofitOverpass = new retrofit2.Retrofit.Builder()
+                .baseUrl("https://overpass-api.de/api/") // URL Base di Overpass
+                .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
+                .build();
+
+        OverpassService service = retrofitOverpass.create(OverpassService.class);
+
+        // 2. Costruiamo la query nel linguaggio Overpass QL
+        // [out:json];node["amenity"="parking"](around:5000, lat, lon);out;
+        // 5000 = raggio in metri (5km). Metti 10000 per 10km.
+        String query = "[out:json];node[\"amenity\"=\"parking\"](around:1000," + lat + "," + lon + ");out;";
+        // 3. Chiamata di rete (Nota come uso .data.OverpassResponse)
+        service.cercaParcheggi(query).enqueue(new retrofit2.Callback<com.example.parkpin.data.OverpassResponse>() {
+            @Override
+            public void onResponse(retrofit2.Call<com.example.parkpin.data.OverpassResponse> call, retrofit2.Response<com.example.parkpin.data.OverpassResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    // Controlliamo se la lista esiste
+                    if (response.body().elementi != null) {
+                        mostraListaParcheggi(response.body().elementi);
+                    } else {
+                        android.widget.Toast.makeText(requireContext(), "Nessun parcheggio trovato.", android.widget.Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    android.widget.Toast.makeText(requireContext(), "Errore server.", android.widget.Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(retrofit2.Call<com.example.parkpin.data.OverpassResponse> call, Throwable t) {
+                android.widget.Toast.makeText(requireContext(), "Errore connessione!", android.widget.Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    // Funzione per mostrare la lista a schermo (Dialog)
+    private void mostraListaParcheggi(java.util.List<com.example.parkpin.data.OverpassResponse.Elemento> lista) {
+        if (lista.isEmpty()) {
+            android.widget.Toast.makeText(requireContext(), "Nessun parcheggio in zona.", android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Creiamo due array: uno per i nomi (da mostrare) e uno per gli oggetti veri
+        String[] nomiParcheggi = new String[lista.size()];
+
+        for (int i = 0; i < lista.size(); i++) {
+            com.example.parkpin.data.OverpassResponse.Elemento p = lista.get(i);
+            // Se ha un nome usalo, altrimenti scrivi "Parcheggio senza nome"
+            String nome = (p.tags != null && p.tags.nome != null) ? p.tags.nome : "Parcheggio pubblico (" + (i+1) + ")";
+            nomiParcheggi[i] = nome;
+        }
+
+        // Costruiamo il Dialogo
+        new android.app.AlertDialog.Builder(requireContext())
+                .setTitle("Parcheggi Vicini (5km)")
+                .setItems(nomiParcheggi, (dialog, which) -> {
+                    // L'utente ha cliccato sull'elemento numero 'which'
+                    com.example.parkpin.data.OverpassResponse.Elemento selezionato = lista.get(which);
+
+                    // 1. Sposta la mappa lì
+                    org.osmdroid.util.GeoPoint punto = new org.osmdroid.util.GeoPoint(selezionato.lat, selezionato.lon);
+                    map.getController().animateTo(punto);
+                    map.getController().setZoom(18.0);
+
+                    // 2. Metti un marker
+                    org.osmdroid.views.overlay.Marker m = new org.osmdroid.views.overlay.Marker(map);
+                    m.setPosition(punto);
+                    m.setTitle("Parcheggio");
+                    m.setSnippet(nomiParcheggi[which]);
+                    m.setIcon(androidx.core.content.ContextCompat.getDrawable(requireContext(), android.R.drawable.ic_menu_myplaces)); // Icona standard
+
+                    map.getOverlays().add(m);
+                    map.invalidate(); // Ridisegna
+
+                    android.widget.Toast.makeText(requireContext(), "Selezionato: " + nomiParcheggi[which], android.widget.Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Chiudi", null)
+                .show();
     }
 }
