@@ -16,9 +16,12 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+
+        // ECCO LA RIGA CHE MANCAVA!
+        // Senza questa, Android Studio non trova "osmbonuspack"
+        maven { url = uri("https://jitpack.io") }
     }
 }
 
 rootProject.name = "ParkPin"
 include(":app")
- 
