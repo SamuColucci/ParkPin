@@ -1,0 +1,102 @@
+Index: app/src/main/res/layout/activity_main.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n<androidx.constraintlayout.widget.ConstraintLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\r\n    xmlns:app=\"http://schemas.android.com/apk/res-auto\"\r\n    xmlns:tools=\"http://schemas.android.com/tools\"\r\n    android:id=\"@+id/main\"\r\n    android:layout_width=\"match_parent\"\r\n    android:layout_height=\"match_parent\"\r\n    tools:context=\".MainActivity\">\r\n\r\n    <TextView\r\n        android:layout_width=\"wrap_content\"\r\n        android:layout_height=\"wrap_content\"\r\n        android:text=\"Hello World!\"\r\n        app:layout_constraintBottom_toBottomOf=\"parent\"\r\n        app:layout_constraintEnd_toEndOf=\"parent\"\r\n        app:layout_constraintStart_toStartOf=\"parent\"\r\n        app:layout_constraintTop_toTopOf=\"parent\" />\r\n\r\n</androidx.constraintlayout.widget.ConstraintLayout>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/layout/activity_main.xml b/app/src/main/res/layout/activity_main.xml
+--- a/app/src/main/res/layout/activity_main.xml	(revision 3c857ce6c8ad0b960ba002b71045cede4f72a8b2)
++++ b/app/src/main/res/layout/activity_main.xml	(date 1769725474885)
+@@ -1,19 +1,45 @@
+ <?xml version="1.0" encoding="utf-8"?>
+-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+-    xmlns:app="http://schemas.android.com/apk/res-auto"
+-    xmlns:tools="http://schemas.android.com/tools"
+-    android:id="@+id/main"
++<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+     android:layout_width="match_parent"
+-    android:layout_height="match_parent"
+-    tools:context=".MainActivity">
++    android:layout_height="match_parent">
++
++    <Button
++        android:id="@+id/btn1"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_alignParentStart="true"
++        android:layout_alignParentLeft="true"
++        android:layout_alignParentTop="true"
++        android:layout_marginStart="10dp"
++        android:layout_marginLeft="10dp"
++        android:layout_marginTop="6dp"
++        android:text="Pulsante1" />
++
++    <Button
++        android:id="@+id/btn2"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:text="Pulsante2"
++        android:layout_alignParentBottom="true"
++        android:layout_alignParentLeft="true"
++        android:layout_alignParentStart="true" />
+ 
+     <TextView
++        android:id="@+id/txt_center"
+         android:layout_width="wrap_content"
+         android:layout_height="wrap_content"
+-        android:text="Hello World!"
+-        app:layout_constraintBottom_toBottomOf="parent"
+-        app:layout_constraintEnd_toEndOf="parent"
+-        app:layout_constraintStart_toStartOf="parent"
+-        app:layout_constraintTop_toTopOf="parent" />
++        android:text="Testo"
++        android:textSize="20sp"
++        android:layout_centerInParent="true" />
++
++    <ImageView
++        android:id="@+id/img_world"
++        android:layout_width="40dp"
++        android:layout_height="40dp"
++        android:layout_marginStart="9dp"
++        android:layout_marginLeft="9dp"
++        android:layout_toEndOf="@id/txt_center"
++        android:layout_toRightOf="@id/txt_center"
++        android:src="@android:drawable/ic_menu_mapmode" />
+ 
+-</androidx.constraintlayout.widget.ConstraintLayout>
+\ No newline at end of file
++</RelativeLayout>
+\ No newline at end of file
+Index: app/src/main/java/com/example/parkpin/MainActivity.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.parkpin;\r\n\r\nimport android.os.Bundle;\r\n\r\nimport androidx.activity.EdgeToEdge;\r\nimport androidx.appcompat.app.AppCompatActivity;\r\nimport androidx.core.graphics.Insets;\r\nimport androidx.core.view.ViewCompat;\r\nimport androidx.core.view.WindowInsetsCompat;\r\n\r\npublic class MainActivity extends AppCompatActivity {\r\n\r\n    @Override\r\n    protected void onCreate(Bundle savedInstanceState) {\r\n        super.onCreate(savedInstanceState);\r\n        EdgeToEdge.enable(this);\r\n        setContentView(R.layout.activity_main);\r\n        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {\r\n            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());\r\n            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);\r\n            return insets;\r\n        });\r\n    }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/parkpin/MainActivity.java b/app/src/main/java/com/example/parkpin/MainActivity.java
+--- a/app/src/main/java/com/example/parkpin/MainActivity.java	(revision 3c857ce6c8ad0b960ba002b71045cede4f72a8b2)
++++ b/app/src/main/java/com/example/parkpin/MainActivity.java	(date 1769724052503)
+@@ -1,5 +1,6 @@
+ package com.example.parkpin;
+ 
++import android.annotation.SuppressLint;
+ import android.os.Bundle;
+ 
+ import androidx.activity.EdgeToEdge;
+@@ -10,12 +11,13 @@
+ 
+ public class MainActivity extends AppCompatActivity {
+ 
++    @SuppressLint("MissingInflatedId")
+     @Override
+     protected void onCreate(Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+         EdgeToEdge.enable(this);
+         setContentView(R.layout.activity_main);
+-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
++        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.btn2), (v, insets) -> {
+             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+             return insets;
