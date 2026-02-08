@@ -44,6 +44,10 @@ public class MapFragment extends Fragment {
 
     private android.widget.Button btnStopNav;
     private GeoPoint destinazioneCorrente = null;
+
+    private android.location.LocationManager locationManager;
+    private android.location.LocationListener locationListener;
+    private GeoPoint ultimaPosizioneCalcolo = null;
     private org.osmdroid.views.overlay.Marker currentMarker = null;
     // Gestore moderno dei Permessi
     private final ActivityResultLauncher<String> requestPermissionLauncher =
@@ -192,26 +196,91 @@ public class MapFragment extends Fragment {
 
     // Questa funzione accende il pallino blu (o l'omino!)
     private void attivaPosizioneUtente() {
+        // 1. Configurazione Osmdroid standard (Omino, Bussola, ecc)
         myLocationOverlay = new MyLocationNewOverlay(new GpsMyLocationProvider(requireContext()), map);
         myLocationOverlay.enableMyLocation();
         myLocationOverlay.enableFollowLocation();
 
-        // =================================================================
-        // CAMBIAMO L'ICONA CON L'OMINO VETTORIALE
-        // =================================================================
-
-        // 1. Convertiamo il Vector (xml) in Bitmap (immagine)
-        // Assicurati di aver creato l'icona "ic_baseline_person_24" come spiegato sopra!
-        // Se l'hai chiamata diversamente, cambia il nome qui sotto.
         android.graphics.Bitmap omino = getBitmapFromVectorDrawable(requireContext(), R.drawable.baseline_directions_car_24);
-
+        // Usa pure ic_logo_app o il tuo logo auto se preferisci!
         if (omino != null) {
-            myLocationOverlay.setPersonIcon(omino);    // Icona quando sei fermo
-            myLocationOverlay.setDirectionIcon(omino); // Icona quando ti muovi
+            myLocationOverlay.setPersonIcon(omino);
+            myLocationOverlay.setDirectionIcon(omino);
         }
-        // =================================================================
-
         map.getOverlays().add(myLocationOverlay);
+
+        // 2. CONFIGURAZIONE LISTENER GPS (Il cervello della navigazione)
+        locationManager = (android.location.LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
+
+        locationListener = new android.location.LocationListener() {
+            @Override
+            public void onLocationChanged(@NonNull android.location.Location location) {
+                // A. Se non stiamo navigando, non fare nulla
+                android.content.SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
+                if (!prefs.getBoolean("navigazione_attiva", false)) return;
+
+                // B. Recupera destinazione
+                double destLat = prefs.getFloat("dest_lat", 0);
+                double destLon = prefs.getFloat("dest_lon", 0);
+
+                // C. Calcola DISTANZA RIMANENTE (in metri)
+                float[] risultati = new float[1];
+                android.location.Location.distanceBetween(location.getLatitude(), location.getLongitude(), destLat, destLon, risultati);
+                float distanzaMetri = risultati[0];
+
+                // === CASO 1: SEI ARRIVATO? (Meno di 40 metri) ===
+                if (distanzaMetri < 40) {
+                    gestisciArrivoDestinazione();
+                }
+                // === CASO 2: AGGIORNA LINEA BLU (Ogni 50 metri) ===
+                else {
+                    GeoPoint posizioneAttuale = new GeoPoint(location.getLatitude(), location.getLongitude());
+
+                    // Se è la prima volta o mi sono mosso di 50 metri dall'ultimo calcolo
+                    if (ultimaPosizioneCalcolo == null || posizioneAttuale.distanceToAsDouble(ultimaPosizioneCalcolo) > 50) {
+
+                        GeoPoint destinazione = new GeoPoint(destLat, destLon);
+                        disegnaPercorsoSullaMappa(posizioneAttuale, destinazione);
+
+                        ultimaPosizioneCalcolo = posizioneAttuale; // Ricordiamoci dove eravamo
+                    }
+                }
+            }
+            // Metodi vuoti obbligatori
+            @Override public void onProviderEnabled(@NonNull String provider) {}
+            @Override public void onProviderDisabled(@NonNull String provider) {}
+            @Override public void onStatusChanged(String provider, int status, Bundle extras) {}
+        };
+
+        // 3. Attiva il listener (richiede permessi, ma li abbiamo già controllati prima)
+        try {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                // Aggiorna ogni 2 secondi o ogni 10 metri
+                locationManager.requestLocationUpdates(android.location.LocationManager.GPS_PROVIDER, 2000, 10, locationListener);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void gestisciArrivoDestinazione() {
+        // 1. Ferma la navigazione (cancella linea, spegni GPS extra)
+        stopNavigazione();
+
+        // 2. Mostra un bel messaggio
+        new android.app.AlertDialog.Builder(requireContext())
+                .setTitle("🎉 SEI ARRIVATO!")
+                .setMessage("Hai raggiunto la tua destinazione. Buona sosta!")
+                .setIcon(android.R.drawable.ic_dialog_map)
+                .setPositiveButton("Ottimo", null)
+                .show();
+
+        // 3. (Opzionale) Vibrazione per avvisare
+        android.os.Vibrator v = (android.os.Vibrator) requireContext().getSystemService(Context.VIBRATOR_SERVICE);
+        if (v != null) {
+            // Vibra per 500 millisecondi
+            v.vibrate(android.os.VibrationEffect.createOneShot(500, android.os.VibrationEffect.DEFAULT_AMPLITUDE));
+        }
     }
 
     // --- FUNZIONE DI SUPPORTO PER CONVERTIRE VETTORI IN BITMAP ---
@@ -236,6 +305,9 @@ public class MapFragment extends Fragment {
         super.onPause();
         if (map != null) map.onPause();
         if (myLocationOverlay != null) myLocationOverlay.disableMyLocation();
+        if (locationManager != null && locationListener != null) {
+            locationManager.removeUpdates(locationListener);
+        }
 
         // SALVATAGGIO PERMANENTE (SharedPreferences)
         if (map != null) {
@@ -448,6 +520,8 @@ public class MapFragment extends Fragment {
         // 1. Pulisci la memoria (così non ricompare se ruoti)
         android.content.SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
         prefs.edit().clear().apply();
+
+        ultimaPosizioneCalcolo = null;
 
         // 2. Rimuovi la linea blu
         if (currentRoute != null) {
