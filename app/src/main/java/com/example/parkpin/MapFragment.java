@@ -11,7 +11,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.RadioGroup;
 import android.widget.ScrollView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,6 +25,7 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.button.MaterialButton;
 
 // Osmdroid Imports
 import org.osmdroid.config.Configuration;
@@ -42,7 +45,7 @@ import java.util.List;
 
 // Retrofit Imports
 import com.example.parkpin.data.OverpassResponse;
-import com.example.parkpin.data.OverpassResponse.Elemento; // Assicurati che la tua classe si chiami così
+import com.example.parkpin.data.OverpassResponse.Elemento;
 import retrofit2.Call;
 import retrofit2.Response;
 import retrofit2.http.GET;
@@ -52,23 +55,23 @@ public class MapFragment extends Fragment {
 
     // --- VARIABILI MAPPA ---
     private MapView map = null;
-    private MyLocationNewOverlay myLocationOverlay; // Il cursore (Auto/Pallino)
-    private Polyline currentRoute = null; // La linea blu
-    private Marker currentMarker = null; // Il pin rosso di destinazione
+    private MyLocationNewOverlay myLocationOverlay;
+    private Polyline currentRoute = null;
+    private Marker currentMarker = null;
 
     // --- VARIABILI NAVIGAZIONE ---
     private android.widget.Button btnStopNav;
     private android.location.LocationManager locationManager;
     private android.location.LocationListener locationListener;
-    private GeoPoint ultimaPosizioneCalcolo = null; // Per evitare ricalcoli inutili
+    private GeoPoint ultimaPosizioneCalcolo = null;
 
-    // --- INTERFACCIA RETROFIT (Definita qui per comodità) ---
+    // --- RETROFIT INTERFACE ---
     public interface OverpassService {
         @GET("interpreter")
         Call<OverpassResponse> cercaParcheggi(@Query("data") String data);
     }
 
-    // --- GESTORE PERMESSI ---
+    // --- PERMESSI ---
     private final ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
                 if (isGranted) {
@@ -82,7 +85,6 @@ public class MapFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         Context ctx = requireActivity().getApplicationContext();
         Configuration.getInstance().load(ctx, PreferenceManager.getDefaultSharedPreferences(ctx));
-        // Imposta uno User Agent per evitare blocchi da OSM
         Configuration.getInstance().setUserAgentValue("ParkPinApp/1.0");
         return inflater.inflate(R.layout.fragment_map, container, false);
     }
@@ -91,25 +93,23 @@ public class MapFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // 1. INIZIALIZZAZIONE MAPPA
+        // 1. MAPPA SETUP
         map = view.findViewById(R.id.map);
         map.setTileSource(TileSourceFactory.MAPNIK);
         map.setMultiTouchControls(true);
 
-        // 2. RIPRISTINO STATO (Se giri lo schermo)
         if (savedInstanceState != null) {
-            double zoom = savedInstanceState.getDouble("zoom_level", 18.0);
-            double lat = savedInstanceState.getDouble("center_lat", 41.8902);
-            double lon = savedInstanceState.getDouble("center_lon", 12.4922);
-            map.getController().setZoom(zoom);
-            map.getController().setCenter(new GeoPoint(lat, lon));
+            map.getController().setZoom(savedInstanceState.getDouble("zoom_level", 18.0));
+            map.getController().setCenter(new GeoPoint(
+                    savedInstanceState.getDouble("center_lat", 41.8902),
+                    savedInstanceState.getDouble("center_lon", 12.4922)));
         } else {
             map.getController().setZoom(18.0);
         }
 
-        // 3. SETUP BOTTONI
+        // 2. BOTTONI
 
-        // A. Bottone Centra Posizione (Mirino)
+        // A. Centra
         View btnCentra = view.findViewById(R.id.fab_centra_posizione);
         if (btnCentra != null) {
             btnCentra.setOnClickListener(v -> {
@@ -123,56 +123,62 @@ public class MapFragment extends Fragment {
             });
         }
 
-        // B. Bottone Google Maps (In alto a destra nella barra)
-        View btnGoogle = view.findViewById(R.id.btn_google_maps); // Nota: Potrebbe essere ImageButton o Button
-        if (btnGoogle != null) {
-            btnGoogle.setOnClickListener(v -> {
+        // B. Google Maps
+        View btnNavGoogle = view.findViewById(R.id.btn_nav_google_maps);
+
+        if (btnNavGoogle != null) {
+            btnNavGoogle.setOnClickListener(v -> {
+                // Recuperiamo le coordinate della destinazione ATTUALE
                 android.content.SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
+
                 if (prefs.getBoolean("navigazione_attiva", false)) {
                     float lat = prefs.getFloat("dest_lat", 0);
                     float lon = prefs.getFloat("dest_lon", 0);
+
+                    // Apriamo Google Maps Navigation verso quel punto
                     android.net.Uri gmmIntentUri = android.net.Uri.parse("google.navigation:q=" + lat + "," + lon);
                     android.content.Intent mapIntent = new android.content.Intent(android.content.Intent.ACTION_VIEW, gmmIntentUri);
                     mapIntent.setPackage("com.google.android.apps.maps");
+
                     try {
                         startActivity(mapIntent);
                     } catch (Exception e) {
                         Toast.makeText(requireContext(), "Google Maps non installato.", Toast.LENGTH_SHORT).show();
                     }
                 } else {
-                    Toast.makeText(requireContext(), "Seleziona prima un parcheggio!", Toast.LENGTH_SHORT).show();
+                    // Questo caso non dovrebbe succedere perché il pannello è nascosto se non navighi
+                    Toast.makeText(requireContext(), "Nessuna destinazione attiva.", Toast.LENGTH_SHORT).show();
                 }
             });
         }
 
-        // C. Bottone Cerca Parcheggi (Overpass)
+        // C. CERCA PARCHEGGI (MODIFICATO: APRE IL FILTRO)
         View btnCerca = view.findViewById(R.id.btn_cerca_parcheggi);
         if (btnCerca != null) {
             btnCerca.setOnClickListener(v -> {
                 if (myLocationOverlay != null && myLocationOverlay.getMyLocation() != null) {
-                    double lat = myLocationOverlay.getMyLocation().getLatitude();
-                    double lon = myLocationOverlay.getMyLocation().getLongitude();
-                    cercaParcheggiVicini(lat, lon);
+                    // Invece di cercare subito, apriamo il dialog dei filtri
+                    mostraDialogFiltri(myLocationOverlay.getMyLocation().getLatitude(), myLocationOverlay.getMyLocation().getLongitude());
                 } else {
-                    Toast.makeText(requireContext(), "GPS non ancora pronto.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), "GPS non pronto. Attendi...", Toast.LENGTH_SHORT).show();
                 }
             });
         }
 
-        // D. Bottone Salva (+)
+        // D. Salva
         View fabSalva = view.findViewById(R.id.fab_salva);
         if (fabSalva != null) {
             fabSalva.setOnClickListener(v -> {
+                // CONTROLLO INTENT (Se arrivo dalla Welcome con "Salva posizione")
                 Toast.makeText(requireContext(), "Funzione Salva Auto in arrivo...", Toast.LENGTH_SHORT).show();
-                // Qui in futuro metteremo il codice per il Database Room
             });
         }
 
-        // E. Bottone STOP Navigazione (Rosso)
+        // E. Stop Navigazione
         btnStopNav = view.findViewById(R.id.btn_stop_navigazione);
         btnStopNav.setOnClickListener(v -> stopNavigazione());
 
-        // 4. ATTIVAZIONE GPS
+        // 3. GPS START
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             attivaPosizioneUtente();
         } else {
@@ -180,26 +186,104 @@ public class MapFragment extends Fragment {
         }
     }
 
+    private void mostraDialogFiltri(double lat, double lon) {
+        BottomSheetDialog dialog = new BottomSheetDialog(requireContext());
+        View view = getLayoutInflater().inflate(R.layout.dialog_search_filters, null);
+        dialog.setContentView(view);
+        ((View) view.getParent()).setBackgroundColor(Color.TRANSPARENT);
+
+        // Componenti
+        android.widget.EditText etNome = view.findViewById(R.id.et_ricerca_nome); // NUOVO CAMPO
+        TextView txtRaggio = view.findViewById(R.id.txt_raggio_label);
+        SeekBar seekBar = view.findViewById(R.id.seekbar_distanza);
+        RadioGroup radioGroup = view.findViewById(R.id.radio_group_tipo);
+        MaterialButton btnAvvia = view.findViewById(R.id.btn_avvia_ricerca);
+
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (progress < 500) progress = 500;
+                txtRaggio.setText("Distanza massima: " + (progress / 1000.0) + " km");
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
+        btnAvvia.setOnClickListener(v -> {
+            int raggio = seekBar.getProgress();
+            if (raggio < 500) raggio = 500;
+
+            String filtroCosto = "all";
+            int selectedId = radioGroup.getCheckedRadioButtonId();
+            if (selectedId == R.id.radio_gratis) filtroCosto = "free";
+            else if (selectedId == R.id.radio_pagamento) filtroCosto = "paid";
+
+            // LEGGIAMO IL NOME (e togliamo spazi extra)
+            String filtroNome = etNome.getText().toString().trim();
+
+            dialog.dismiss();
+            // Passiamo anche il nome alla ricerca
+            cercaParcheggiVicini(lat, lon, raggio, filtroCosto, filtroNome);
+        });
+
+        dialog.show();
+    }
+
     // =============================================================
-    // GESTIONE GPS E NAVIGAZIONE REAL-TIME
+    // RICERCA: SCARICA TUTTO E FILTRA DOPO (Più affidabile)
     // =============================================================
+    // Aggiunto parametro filtroNome
+    private void cercaParcheggiVicini(double lat, double lon, int raggio, String filtroCosto, String filtroNome) {
+        Toast.makeText(requireContext(), "Cerco parcheggi...", Toast.LENGTH_SHORT).show();
+
+        retrofit2.Retrofit retrofitOverpass = new retrofit2.Retrofit.Builder()
+                .baseUrl("https://overpass-api.de/api/")
+                .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
+                .build();
+
+        OverpassService service = retrofitOverpass.create(OverpassService.class);
+
+        // Scarichiamo SEMPRE tutto, il filtro nome lo facciamo in locale
+        String query = "[out:json];node[\"amenity\"=\"parking\"](around:" + raggio + "," + lat + "," + lon + ");out;";
+
+        service.cercaParcheggi(query).enqueue(new retrofit2.Callback<OverpassResponse>() {
+            @Override
+            public void onResponse(Call<OverpassResponse> call, Response<OverpassResponse> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().elementi != null) {
+                    if (response.body().elementi.isEmpty()) {
+                        Toast.makeText(requireContext(), "Nessun parcheggio trovato.", Toast.LENGTH_LONG).show();
+                    } else {
+                        // Passiamo TUTTI i filtri alla lista
+                        mostraListaParcheggiMigliorata(response.body().elementi, filtroCosto, filtroNome);
+                    }
+                } else {
+                    Toast.makeText(requireContext(), "Errore ricerca.", Toast.LENGTH_SHORT).show();
+                }
+            }
+            @Override
+            public void onFailure(Call<OverpassResponse> call, Throwable t) {
+                Toast.makeText(requireContext(), "Errore connessione: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+    // =============================================================
+    // NAVIGAZIONE E LISTE (CODICE PRECEDENTE MANTENUTO)
+    // =============================================================
+
     private void attivaPosizioneUtente() {
-        // 1. Setup Overlay su Mappa
+        // 1. Setup Overlay su Mappa (Macchinina)
         myLocationOverlay = new MyLocationNewOverlay(new GpsMyLocationProvider(requireContext()), map);
         myLocationOverlay.enableMyLocation();
         myLocationOverlay.enableFollowLocation();
 
-        // Icona Macchina
         android.graphics.Bitmap iconaMacchina = getBitmapFromVectorDrawable(requireContext(), R.drawable.baseline_directions_car_24);
-        // Assicurati che il nome drawable corrisponda al tuo file (es. logo_parkpin o car)
-
         if (iconaMacchina != null) {
             myLocationOverlay.setPersonIcon(iconaMacchina);
             myLocationOverlay.setDirectionIcon(iconaMacchina);
         }
         map.getOverlays().add(myLocationOverlay);
 
-        // 2. Setup Listener per aggiornamenti posizione e calcolo arrivo
+        // 2. Setup Listener GPS
         locationManager = (android.location.LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
 
         locationListener = new android.location.LocationListener() {
@@ -207,15 +291,35 @@ public class MapFragment extends Fragment {
             public void onLocationChanged(@NonNull android.location.Location location) {
                 // Controllo se stiamo navigando
                 android.content.SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
+                // Se la navigazione non è attiva, usciamo subito
                 if (!prefs.getBoolean("navigazione_attiva", false)) return;
 
                 double destLat = prefs.getFloat("dest_lat", 0);
                 double destLon = prefs.getFloat("dest_lon", 0);
 
-                // Calcolo distanza rimanente
+                // Calcolo distanza rimanente in metri
                 float[] risultati = new float[1];
                 android.location.Location.distanceBetween(location.getLatitude(), location.getLongitude(), destLat, destLon, risultati);
                 float distanzaMetri = risultati[0];
+
+                // =============================================================
+                // NUOVO: AGGIORNAMENTO UI IN TEMPO REALE (Scritta nel Pannello Verde) 🟢
+                // =============================================================
+                if (getView() != null) {
+                    TextView txtDist = getView().findViewById(R.id.txt_nav_distanza);
+                    View navPanel = getView().findViewById(R.id.nav_info_card);
+
+                    // Aggiorniamo solo se il pannello è visibile
+                    if (txtDist != null && navPanel != null && navPanel.getVisibility() == View.VISIBLE) {
+                        if (distanzaMetri < 1000) {
+                            txtDist.setText((int) distanzaMetri + " m all'arrivo");
+                        } else {
+                            txtDist.setText(String.format("%.1f km all'arrivo", distanzaMetri / 1000));
+                        }
+                    }
+                }
+                // =============================================================
+
 
                 // CASO 1: SEI ARRIVATO (< 40m)
                 if (distanzaMetri < 40) {
@@ -249,106 +353,93 @@ public class MapFragment extends Fragment {
     private void gestisciArrivoDestinazione() {
         stopNavigazione();
         new android.app.AlertDialog.Builder(requireContext())
-                .setTitle("🎉 DESTINAZIONE RAGGIUNTA!")
-                .setMessage("Sei arrivato al parcheggio. Buona sosta con ParkPin!")
+                .setTitle("🎉 ARRIVATO!")
+                .setMessage("Sei giunto a destinazione.")
                 .setIcon(android.R.drawable.ic_dialog_map)
-                .setPositiveButton("Chiudi", null)
+                .setPositiveButton("Ok", null)
                 .show();
-
-        // Vibrazione
         android.os.Vibrator v = (android.os.Vibrator) requireContext().getSystemService(Context.VIBRATOR_SERVICE);
         if (v != null) v.vibrate(500);
     }
 
     // =============================================================
-    // RICERCA PARCHEGGI (RETROFIT + OVERPASS)
+    // LISTA CON FILTRO LOCALE E DISTANZA
     // =============================================================
-    private void cercaParcheggiVicini(double lat, double lon) {
-        Toast.makeText(requireContext(), "Cerco parcheggi in zona...", Toast.LENGTH_SHORT).show();
-
-        retrofit2.Retrofit retrofitOverpass = new retrofit2.Retrofit.Builder()
-                .baseUrl("https://overpass-api.de/api/")
-                .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
-                .build();
-
-        OverpassService service = retrofitOverpass.create(OverpassService.class);
-
-        // Query Overpass: cerca parcheggi entro 2km
-        String query = "[out:json];node[\"amenity\"=\"parking\"](around:2000," + lat + "," + lon + ");out;";
-
-        service.cercaParcheggi(query).enqueue(new retrofit2.Callback<OverpassResponse>() {
-            @Override
-            public void onResponse(Call<OverpassResponse> call, Response<OverpassResponse> response) {
-                if (response.isSuccessful() && response.body() != null && response.body().elementi != null) {
-                    // CHIAMATA AL NUOVO METODO MIGLIORATO
-                    mostraListaParcheggiMigliorata(response.body().elementi);
-                } else {
-                    Toast.makeText(requireContext(), "Nessun parcheggio trovato.", Toast.LENGTH_SHORT).show();
-                }
-            }
-            @Override
-            public void onFailure(Call<OverpassResponse> call, Throwable t) {
-                Toast.makeText(requireContext(), "Errore connessione: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
+    // Nota: Ho aggiunto il parametro String filtroCosto
+    // Aggiunto parametro filtroNome
     // =============================================================
-    // NUOVO METODO LISTA: BOTTOM SHEET + CARDS
+    // LISTA DEFINITIVA (Con Via, Distanza Aerea e Filtri) 🏆
     // =============================================================
-    private void mostraListaParcheggiMigliorata(java.util.List<Elemento> listaParcheggi) {
-        if (listaParcheggi == null || listaParcheggi.isEmpty()) {
-            Toast.makeText(requireContext(), "Nessun parcheggio in zona.", Toast.LENGTH_SHORT).show();
-            return;
-        }
+    private void mostraListaParcheggiMigliorata(java.util.List<Elemento> listaParcheggi, String filtroCosto, String filtroNome) {
+        if (listaParcheggi == null || listaParcheggi.isEmpty()) return;
+
+        int conteggioVisibili = 0;
 
         BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(requireContext());
-
-        // --- 1. CONFIGURAZIONE CONTENITORE ---
         ScrollView scrollView = new ScrollView(requireContext());
         LinearLayout container = new LinearLayout(requireContext());
         container.setOrientation(LinearLayout.VERTICAL);
-        // Colore di sfondo generale del pannello (Grigio chiarissimo per far risaltare le card bianche)
         container.setBackgroundResource(R.drawable.sfondo_bottom_sheet);
-        container.setPadding(0, 30, 0, 50); // Padding
+        container.setPadding(0, 30, 0, 50);
 
-        // --- 2. AGGIUNTA "MANIGLIA" (Barretta grigia in alto) ---
+        // Maniglia
         View handle = new View(requireContext());
-        LinearLayout.LayoutParams handleParams = new LinearLayout.LayoutParams(100, 12); // Larghezza 100, Altezza 12
+        LinearLayout.LayoutParams handleParams = new LinearLayout.LayoutParams(100, 12);
         handleParams.gravity = android.view.Gravity.CENTER_HORIZONTAL;
         handleParams.bottomMargin = 40;
         handle.setLayoutParams(handleParams);
-        handle.setBackgroundColor(Color.parseColor("#E0E0E0")); // Grigio chiaro
-        // Arrotondiamo la maniglia (trucco veloce usando un drawable standard o shape)
-        // Per semplicità qui è rettangolare, ma sta bene lo stesso.
+        handle.setBackgroundColor(Color.parseColor("#E0E0E0"));
         container.addView(handle);
 
-        // Titolo elegante
+        // Titolo
         TextView titolo = new TextView(requireContext());
-        titolo.setText("Parcheggi nelle vicinanze");
         titolo.setTextSize(20);
         titolo.setTypeface(null, Typeface.BOLD);
         titolo.setTextColor(Color.BLACK);
-        titolo.setPadding(40, 0, 0, 30); // Padding sinistro allineato alle card
+        titolo.setPadding(40, 0, 0, 30);
         container.addView(titolo);
 
-        // --- 3. CICLO ELEMENTI ---
+        // Recupera posizione attuale per calcolo distanza aerea
+        GeoPoint miaPosizione = null;
+        if (myLocationOverlay != null && myLocationOverlay.getMyLocation() != null) {
+            miaPosizione = myLocationOverlay.getMyLocation();
+        }
+
         for (Elemento p : listaParcheggi) {
             if (p.lat == 0 || p.lon == 0) continue;
 
-            // Parsing Dati
+            // --- 1. PARSING NOME E VIA ---
+            // --- 1. PARSING NOME E VIA 🏠 ---
             String nome = "Parcheggio Pubblico";
 
-            // Logica NOME
+            // Logica Nome (uguale a prima)
             if (p.tags != null) {
                 if (p.tags.nome != null) nome = p.tags.nome;
                 else if (p.tags.operator != null) nome = "Parcheggio " + p.tags.operator;
             }
 
-            // Logica COSTO (Fee)
+            // --- NUOVA LOGICA INDIRIZZO (SMART) ---
+            String strada = null;
+
+            // TENTATIVO A: Leggiamo dai Tag di OSM (è il più veloce)
+            if (p.tags != null && p.tags.strada != null) {
+                strada = p.tags.strada;
+                if (p.tags.numeroCivico != null) strada += ", " + p.tags.numeroCivico;
+            }
+
+            // TENTATIVO B: Se OSM è vuoto, usiamo il Geocoder Android (più lento ma preciso)
+            if (strada == null || strada.isEmpty()) {
+                // Chiamiamo il nostro metodo helper
+                strada = ottieniIndirizzoReale(p.lat, p.lon);
+            }
+
+            // Se fallisce pure quello, mettiamo un default
+            if (strada == null) strada = "Posizione sulla mappa";
+
+            // --- 2. PARSING COSTO ---
             boolean isPagamento = false;
             String testoPrezzo = "GRATIS";
-            String posti = "";
+            String dettagliExtra = "";
 
             if (p.tags != null) {
                 String fee = p.tags.fee;
@@ -356,79 +447,105 @@ public class MapFragment extends Fragment {
                     isPagamento = true;
                     testoPrezzo = "PAGAMENTO";
                 }
+                if (p.tags.capacity != null) dettagliExtra = " • " + p.tags.capacity + " posti";
+            }
 
-                if (p.tags.capacity != null) {
-                    posti = " • " + p.tags.capacity + " posti";
+            // --- 3. FILTRI UTENTE ---
+            // Filtro Costo
+            if (filtroCosto.equals("free") && isPagamento) continue;
+            if (filtroCosto.equals("paid") && !isPagamento) continue;
+
+            // Filtro Testo (Cerca in Nome o Via)
+            if (!filtroNome.isEmpty()) {
+                String ricerca = filtroNome.toLowerCase();
+                if (!nome.toLowerCase().contains(ricerca) && !strada.toLowerCase().contains(ricerca)) {
+                    continue;
                 }
             }
 
-            // --- INFLATING LAYOUT ---
-            View card = getLayoutInflater().inflate(R.layout.item_parcheggio, null);
+            conteggioVisibili++;
 
+            // --- 4. CALCOLO DISTANZA (LINEA D'ARIA) ---
+            // Usiamo il simbolo "~" per indicare che è approssimativa (linea d'aria)
+            String testoDistanza = "";
+            if (miaPosizione != null) {
+                GeoPoint posParcheggio = new GeoPoint(p.lat, p.lon);
+                double distanzaMetri = miaPosizione.distanceToAsDouble(posParcheggio);
+
+                if (distanzaMetri < 1000) {
+                    testoDistanza = String.format(" • ~%d m", (int) distanzaMetri);
+                } else {
+                    testoDistanza = String.format(" • ~%.1f km", distanzaMetri / 1000);
+                }
+            }
+
+            // --- 5. CREAZIONE GRAFICA ---
+            View card = getLayoutInflater().inflate(R.layout.item_parcheggio, null);
             TextView txtNome = card.findViewById(R.id.txt_nome_parcheggio);
+            TextView txtIndirizzo = card.findViewById(R.id.txt_indirizzo); // Assicurati di aver aggiornato l'XML item_parcheggio
             TextView txtPrezzo = card.findViewById(R.id.txt_prezzo);
             TextView txtDettagli = card.findViewById(R.id.txt_dettagli_parcheggio);
 
-            txtNome.setText(nome);
-            txtDettagli.setText(posti);
-            txtPrezzo.setText(testoPrezzo);
-
-            // --- GESTIONE COLORI INTELLIGENTE ---
-            if (isPagamento) {
-                // Se paga: Scritta ARANCIONE SCURO, Sfondo ARANCIONE CHIARO
-                txtPrezzo.setTextColor(Color.parseColor("#E65100")); // Arancione scuro
-                // txtPrezzo.setBackgroundColor(Color.parseColor("#FFE0B2")); // Opzionale sfondo
-            } else {
-                // Se gratis: Scritta VERDE SCURO, Sfondo VERDE CHIARO
-                txtPrezzo.setTextColor(Color.parseColor("#2E7D32")); // Verde scuro
-                // txtPrezzo.setBackgroundColor(Color.parseColor("#C8E6C9")); // Opzionale sfondo
+            // Composizione stringa dettagli
+            String infoFinale = dettagliExtra + testoDistanza;
+            if (dettagliExtra.isEmpty() && !testoDistanza.isEmpty()) {
+                infoFinale = testoDistanza.replace(" • ", "");
             }
 
-            // --- CLICK ---
+            txtNome.setText(nome);
+            txtIndirizzo.setText(strada); // Mostra la via
+            txtDettagli.setText(infoFinale); // Mostra posti e distanza
+            txtPrezzo.setText(testoPrezzo);
+
+            // Colori Prezzo
+            if (isPagamento) txtPrezzo.setTextColor(Color.parseColor("#E65100"));
+            else txtPrezzo.setTextColor(Color.parseColor("#2E7D32"));
+
+            // --- CLICK LISTENER ---
             String finalNome = nome;
             card.setOnClickListener(v -> {
                 bottomSheetDialog.dismiss();
                 GeoPoint dest = new GeoPoint(p.lat, p.lon);
 
+                // Salva Preferenze
                 android.content.SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
                 prefs.edit().putBoolean("navigazione_attiva", true)
                         .putFloat("dest_lat", (float) p.lat)
                         .putFloat("dest_lon", (float) p.lon)
+                        .putString("dest_nome", finalNome)
                         .apply();
 
-                if (btnStopNav != null) btnStopNav.setVisibility(View.VISIBLE);
+                // Mostra Pannello Navigazione Verde
+                aggiornaUI_Navigazione(true);
 
+                // Muovi Mappa
                 map.getController().animateTo(dest);
                 map.getController().setZoom(18.5);
                 mettiMarkerDestinazione(dest, finalNome);
+
+                // Calcola e Disegna Percorso (Qui otterremo la distanza REALE nel pannello verde)
                 if (myLocationOverlay != null && myLocationOverlay.getMyLocation() != null) {
                     disegnaPercorsoSullaMappa(myLocationOverlay.getMyLocation(), dest);
                 }
-                Toast.makeText(requireContext(), "Navigazione verso: " + finalNome, Toast.LENGTH_SHORT).show();
+
+                Toast.makeText(requireContext(), "Rotta verso: " + finalNome, Toast.LENGTH_SHORT).show();
             });
 
             container.addView(card);
         }
 
+        // Titolo dinamico
+        if (conteggioVisibili == 0) {
+            titolo.setText("Nessun parcheggio trovato.");
+        } else {
+            titolo.setText("Risultati (" + conteggioVisibili + ")");
+        }
+
         scrollView.addView(container);
         bottomSheetDialog.setContentView(scrollView);
-
-        // TRUCCO FONDAMENTALE PER GLI ANGOLI ARROTONDATI
-        // Rende trasparente il contenitore standard di Android, così si vede solo il tuo sfondo curvo.
-        bottomSheetDialog.setOnShowListener(dialog -> {
-            com.google.android.material.bottomsheet.BottomSheetDialog d = (com.google.android.material.bottomsheet.BottomSheetDialog) dialog;
-            android.view.View bottomSheet = d.findViewById(com.google.android.material.R.id.design_bottom_sheet);
-            if (bottomSheet != null) {
-                bottomSheet.setBackgroundResource(android.R.color.transparent);
-            }
-        });
-
+        ((View) scrollView.getParent()).setBackgroundColor(Color.TRANSPARENT);
         bottomSheetDialog.show();
     }
-
-    // =============================================================
-    // METODI GRAFICI E UTILITÀ
-    // =============================================================
     private void disegnaPercorsoSullaMappa(GeoPoint start, GeoPoint end) {
         new Thread(() -> {
             try {
@@ -436,18 +553,36 @@ public class MapFragment extends Fragment {
                 ArrayList<GeoPoint> waypoints = new ArrayList<>();
                 waypoints.add(start);
                 waypoints.add(end);
+
+                // Qui OSRM calcola la strada vera
                 Road road = roadManager.getRoad(waypoints);
 
                 if (road.mStatus == Road.STATUS_OK) {
+                    // 1. Disegna la linea blu
                     Polyline roadOverlay = RoadManager.buildRoadOverlay(road);
                     roadOverlay.getOutlinePaint().setColor(Color.BLUE);
                     roadOverlay.getOutlinePaint().setStrokeWidth(15.0f);
 
+                    // 2. Prendi la distanza REALE (in km)
+                    double distanzaRealeKm = road.mLength;
+
                     requireActivity().runOnUiThread(() -> {
+                        // A. Metti la linea sulla mappa
                         if (currentRoute != null) map.getOverlays().remove(currentRoute);
                         currentRoute = roadOverlay;
                         map.getOverlays().add(currentRoute);
                         map.invalidate();
+
+                        // B. AGGIORNA IL PANNELLO VERDE CON LA DISTANZA REALE 🚗
+                        TextView txtDist = getView().findViewById(R.id.txt_nav_distanza);
+                        if (txtDist != null && getView().findViewById(R.id.nav_info_card).getVisibility() == View.VISIBLE) {
+                            if (distanzaRealeKm < 1.0) {
+                                // Se meno di 1km, converti in metri (es. 0.4 km -> 400 m)
+                                txtDist.setText(String.format("%d m (stradale)", (int)(distanzaRealeKm * 1000)));
+                            } else {
+                                txtDist.setText(String.format("%.1f km (stradale)", distanzaRealeKm));
+                            }
+                        }
                     });
                 }
             } catch (Exception e) {
@@ -455,26 +590,25 @@ public class MapFragment extends Fragment {
             }
         }).start();
     }
-
     private void mettiMarkerDestinazione(GeoPoint punto, String titolo) {
         if (currentMarker != null) map.getOverlays().remove(currentMarker);
-
         currentMarker = new Marker(map);
         currentMarker.setPosition(punto);
         currentMarker.setTitle("Arrivo");
         currentMarker.setSnippet(titolo);
         currentMarker.setIcon(ContextCompat.getDrawable(requireContext(), org.osmdroid.library.R.drawable.marker_default));
         currentMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
-
         map.getOverlays().add(currentMarker);
         map.invalidate();
     }
 
     private void stopNavigazione() {
+        // 1. Pulisci preferenze
         android.content.SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
         prefs.edit().clear().apply();
         ultimaPosizioneCalcolo = null;
 
+        // 2. Rimuovi linee e marker
         if (currentRoute != null) {
             map.getOverlays().remove(currentRoute);
             currentRoute = null;
@@ -483,7 +617,21 @@ public class MapFragment extends Fragment {
             map.getOverlays().remove(currentMarker);
             currentMarker = null;
         }
+
+        // 3. Nascondi bottone Stop
         btnStopNav.setVisibility(View.GONE);
+
+        // =========================================================
+        // 4. NUOVO: RESETTA LA BARRA DI RICERCA 🔄
+        // =========================================================
+        TextView searchBar = getView().findViewById(R.id.btn_cerca_parcheggi);
+        if (searchBar != null) {
+            searchBar.setText("Cerca parcheggio qui..."); // Testo di default
+            searchBar.setTextColor(Color.parseColor("#37474F")); // Grigio scuro originale
+            searchBar.setTypeface(null, Typeface.NORMAL); // Toglie il grassetto
+        }
+        // =========================================================
+        aggiornaUI_Navigazione(false);
         map.invalidate();
         Toast.makeText(requireContext(), "Navigazione terminata.", Toast.LENGTH_SHORT).show();
     }
@@ -513,11 +661,95 @@ public class MapFragment extends Fragment {
         if (map != null) map.onResume();
         if (myLocationOverlay != null) {
             myLocationOverlay.enableMyLocation();
-            // Controlla se c'era navigazione attiva e ripristina bottone
-            android.content.SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
-            if (prefs.getBoolean("navigazione_attiva", false)) {
-                btnStopNav.setVisibility(View.VISIBLE);
-            }
         }
+
+        // ====================================================================
+        // RIPRISTINO STATO NAVIGAZIONE (SE L'APP ERA CHIUSA) 🔄
+        // ====================================================================
+        android.content.SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
+
+        if (prefs.getBoolean("navigazione_attiva", false)) {
+            // 1. Recupera i dati salvati
+            double lat = prefs.getFloat("dest_lat", 0);
+            double lon = prefs.getFloat("dest_lon", 0);
+            String nomeDest = prefs.getString("dest_nome", "Destinazione");
+            GeoPoint dest = new GeoPoint(lat, lon);
+
+            // 2. Ripristina il Pannello Verde
+            aggiornaUI_Navigazione(true);
+
+            // 3. RIPRISTINA IL MARKER ROSSO 📍 (Questo mancava!)
+            mettiMarkerDestinazione(dest, nomeDest);
+
+            // 4. Ripristina la linea blu (Se abbiamo già la posizione GPS)
+            if (myLocationOverlay != null && myLocationOverlay.getMyLocation() != null) {
+                disegnaPercorsoSullaMappa(myLocationOverlay.getMyLocation(), dest);
+            }
+            // Se il GPS non è ancora pronto, ci penserà 'onLocationChanged' a disegnare la linea
+            // appena trova la posizione, ma il marker rosso sarà già lì visibile.
+
+        } else {
+            // Nessuna navigazione: assicuriamoci che la UI sia pulita
+            aggiornaUI_Navigazione(false);
+        }
+        // ====================================================================
+    }
+    private void aggiornaUI_Navigazione(boolean attiva) {
+        View searchBar = getView().findViewById(R.id.search_bar_card);
+        View navPanel = getView().findViewById(R.id.nav_info_card);
+        View btnStop = getView().findViewById(R.id.btn_stop_navigazione);
+
+        if (searchBar == null || navPanel == null) return;
+
+        if (attiva) {
+            // MOSTRA NAVIGAZIONE
+            searchBar.setVisibility(View.GONE);  // Nascondi Ricerca
+            navPanel.setVisibility(View.VISIBLE); // Mostra Verde
+            if (btnStop != null) btnStop.setVisibility(View.VISIBLE);
+
+            // Recupera nome parcheggio dalle preferenze
+            android.content.SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
+            String nomeDest = prefs.getString("dest_nome", "Destinazione"); // Assicurati di salvare il nome!
+
+            TextView txtDest = navPanel.findViewById(R.id.txt_nav_destinazione);
+            if (txtDest != null) txtDest.setText(nomeDest);
+
+        } else {
+            // MOSTRA RICERCA NORMALE
+            searchBar.setVisibility(View.VISIBLE);
+            navPanel.setVisibility(View.GONE);
+            if (btnStop != null) btnStop.setVisibility(View.GONE);
+        }
+    }
+    // =============================================================
+    // HELPER: TROVA INDIRIZZO REALE DA COORDINATE (Reverse Geocoding) 🌍
+    // =============================================================
+    private String ottieniIndirizzoReale(double lat, double lon) {
+        String indirizzoTrovato = "Zona non specificata";
+        try {
+            android.location.Geocoder geocoder = new android.location.Geocoder(requireContext(), java.util.Locale.getDefault());
+            // Chiediamo max 1 risultato
+            java.util.List<android.location.Address> addresses = geocoder.getFromLocation(lat, lon, 1);
+
+            if (addresses != null && !addresses.isEmpty()) {
+                android.location.Address obj = addresses.get(0);
+                // Thoroughfare è il nome della via (es. Via Roma)
+                if (obj.getThoroughfare() != null) {
+                    indirizzoTrovato = obj.getThoroughfare();
+                    // SubThoroughfare è il numero civico (es. 10)
+                    if (obj.getSubThoroughfare() != null) {
+                        indirizzoTrovato += ", " + obj.getSubThoroughfare();
+                    }
+                }
+                // Se non trova la via, prova almeno con la località
+                else if (obj.getLocality() != null) {
+                    indirizzoTrovato = obj.getLocality();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Se fallisce (es. niente internet), lascia il default
+        }
+        return indirizzoTrovato;
     }
 }

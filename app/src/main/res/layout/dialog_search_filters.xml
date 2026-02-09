@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@drawable/sfondo_bottom_sheet">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Filtra Ricerca"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="#263238"
+        android:gravity="center"
+        android:layout_marginBottom="24dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Nome (Opzionale)"
+        android:textSize="16sp"
+        android:textColor="#546E7A"
+        android:layout_marginBottom="8dp"/>
+
+    <EditText
+        android:id="@+id/et_ricerca_nome"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:hint="Es. Stazione, Centro..."
+        android:background="@drawable/sfondo_bottom_sheet"
+        android:backgroundTint="#F5F5F5"
+        android:paddingHorizontal="16dp"
+        android:inputType="textCapSentences"
+        android:layout_marginBottom="24dp"/>
+    <TextView
+        android:id="@+id/txt_raggio_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Distanza massima: 2 km"
+        android:textSize="16sp"
+        android:textColor="#546E7A"
+        android:layout_marginBottom="8dp"/>
+
+    <SeekBar
+        android:id="@+id/seekbar_distanza"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="5000"
+        android:progress="2000"
+        android:progressTint="#2962FF"
+        android:thumbTint="#2962FF"
+        android:layout_marginBottom="24dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tipo di Parcheggio"
+        android:textSize="16sp"
+        android:textColor="#546E7A"
+        android:layout_marginBottom="8dp"/>
+
+    <RadioGroup
+        android:id="@+id/radio_group_tipo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_horizontal"
+        android:layout_marginBottom="32dp">
+
+        <RadioButton
+            android:id="@+id/radio_tutti"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tutti"
+            android:checked="true"
+            android:layout_marginEnd="16dp"/>
+
+        <RadioButton
+            android:id="@+id/radio_gratis"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Gratis"
+            android:buttonTint="#4CAF50"
+            android:layout_marginEnd="16dp"/>
+
+        <RadioButton
+            android:id="@+id/radio_pagamento"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Pagamento"
+            android:buttonTint="#FF9800"/>
+    </RadioGroup>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_avvia_ricerca"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="CERCA ORA 🔍"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:cornerRadius="30dp"
+        app:backgroundTint="#2962FF"/>
+
+</LinearLayout>

@@ -27,7 +27,6 @@ public class OverpassResponse {
         @SerializedName("access")
         public String accesso;
 
-        // --- AGGIUNGIAMO QUESTI CAMPI PER LA GRAFICA ---
         @SerializedName("fee")
         public String fee;      // "yes" = a pagamento, "no" = gratis
 
@@ -39,5 +38,12 @@ public class OverpassResponse {
 
         @SerializedName("parking")
         public String tipo;     // "surface", "underground"
+
+        // --- NUOVI CAMPI AGGIUNTI PER LA RICERCA STRADA ---
+        @SerializedName("addr:street")
+        public String strada;   // Es. "Via Roma"
+
+        @SerializedName("addr:housenumber")
+        public String numeroCivico; // Es. "12"
     }
 }
