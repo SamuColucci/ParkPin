@@ -19,12 +19,25 @@ public class OverpassResponse {
         public Tags tags;
     }
 
-    // Classe interna per i dettagli (nome, tipo)
+    // Classe interna per i dettagli
     public static class Tags {
         @SerializedName("name")
-        public String nome; // Nome del parcheggio (es. "Parcheggio Stazione")
+        public String nome;
 
         @SerializedName("access")
-        public String accesso; // es. "private", "customers", "public"
+        public String accesso;
+
+        // --- AGGIUNGIAMO QUESTI CAMPI PER LA GRAFICA ---
+        @SerializedName("fee")
+        public String fee;      // "yes" = a pagamento, "no" = gratis
+
+        @SerializedName("capacity")
+        public String capacity; // Numero posti (es. "50")
+
+        @SerializedName("operator")
+        public String operator; // Chi lo gestisce
+
+        @SerializedName("parking")
+        public String tipo;     // "surface", "underground"
     }
 }
