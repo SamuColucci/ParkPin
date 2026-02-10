@@ -33,7 +33,7 @@ public class ParkingAlarmReceiver extends BroadcastReceiver {
         }
 
         // 4. Intent per aprire l'app quando clicchi
-        Intent tapIntent = new Intent(context, WelcomeActivity.class); // Apre la Welcome o la Main
+        Intent tapIntent = new Intent(context, HomeFragment.class); // Apre la Welcome o la Main
         tapIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, tapIntent, PendingIntent.FLAG_IMMUTABLE);
 

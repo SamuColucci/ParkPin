@@ -67,6 +67,7 @@ dependencies {
 
     // OSMBonusPack (Per tracciare percorsi e navigazione)
     implementation("com.github.MKergall:osmbonuspack:6.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.9.3")
 }
 
 // Blocco di sicurezza globale per il conflitto Jetbrains/IntelliJ

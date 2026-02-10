@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/homeFragment">
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.example.parkpin.HomeFragment"
+        android:label="Home"
+        tools:layout="@layout/fragment_home">
+        <action
+            android:id="@+id/action_home_to_search"
+            app:destination="@id/searchFragment" />
+        <action
+            android:id="@+id/action_home_to_nav"
+            app:destination="@id/navFragment" />
+        <action
+            android:id="@+id/action_home_to_save"
+            app:destination="@id/saveCarFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/searchFragment"
+        android:name="com.example.parkpin.SearchFragment"
+        android:label="Cerca Parcheggio"
+        tools:layout="@layout/fragment_search">
+        <action
+            android:id="@+id/action_search_to_nav"
+            app:destination="@id/navFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navFragment"
+        android:name="com.example.parkpin.NavFragment"
+        android:label="Navigazione"
+        tools:layout="@layout/fragment_nav">
+
+        <argument android:name="dest_lat" app:argType="float" android:defaultValue="0.0" />
+        <argument android:name="dest_lon" app:argType="float" android:defaultValue="0.0" />
+        <argument android:name="dest_nome" app:argType="string" android:defaultValue="Destinazione" />
+        <argument android:name="dest_is_paid" app:argType="boolean" android:defaultValue="false" />
+
+        <action
+            android:id="@+id/action_nav_to_save"
+            app:destination="@id/saveCarFragment"
+            app:popUpTo="@id/homeFragment"
+            app:popUpToInclusive="false"/>
+    </fragment>
+
+    <fragment
+        android:id="@+id/saveCarFragment"
+        android:name="com.example.parkpin.SaveCarFragment"
+        android:label="Salva Posizione"
+        tools:layout="@layout/fragment_save_car">
+        <action
+            android:id="@+id/action_save_to_home"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/homeFragment"
+            app:popUpToInclusive="true"/>
+    </fragment>
+
+</navigation>
