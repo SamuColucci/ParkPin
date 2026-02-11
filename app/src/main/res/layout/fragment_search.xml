@@ -2,19 +2,36 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#E0E0E0">
 
     <org.osmdroid.views.MapView
         android:id="@+id/map"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btn_back_home"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="16dp"
+        android:layout_marginStart="16dp"
+        android:src="@android:drawable/ic_menu_revert"
+        app:backgroundTint="#FFFFFF"
+        app:tint="#37474F"
+        app:fabSize="mini"
+        app:elevation="6dp"/>
+
     <androidx.cardview.widget.CardView
         android:id="@+id/card_search"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:layout_alignParentTop="true"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_toEndOf="@id/btn_back_home"
+        android:layout_marginStart="8dp"
         app:cardCornerRadius="8dp"
         app:cardElevation="6dp">
 
@@ -27,25 +44,28 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                android:weightSum="10">
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_cerca_parcheggi"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="50dp"
-                    android:text="🔍 Filtra Ricerca"
+                    android:layout_weight="7"
+                    android:text="🔍 Filtri"
                     android:textAlignment="viewStart"
                     style="@style/Widget.MaterialComponents.Button.TextButton"
                     android:textColor="#37474F"/>
-            </LinearLayout>
 
-            <ProgressBar
-                android:id="@+id/loading_bar"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:indeterminate="true"
-                android:visibility="gone"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_toggle_list"
+                    android:layout_width="0dp"
+                    android:layout_height="50dp"
+                    android:layout_weight="3"
+                    android:text="Lista ⬇"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:textColor="#2962FF"/>
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/txt_criteri_attivi"
@@ -64,10 +84,77 @@
         android:layout_width="match_parent"
         android:layout_height="250dp"
         android:layout_below="@id/card_search"
-        android:layout_marginHorizontal="16dp"
+        android:layout_alignStart="@id/card_search"
+        android:layout_alignEnd="@id/card_search"
         android:background="#FFFFFF"
         android:elevation="8dp"
         android:visibility="gone"/>
+
+    <LinearLayout
+        android:id="@+id/loading_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="16dp"
+        android:background="@drawable/bg_rounded_white"
+        android:visibility="gone"
+        android:elevation="12dp">
+
+        <ProgressBar
+            android:id="@+id/loading_bar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:indeterminateTint="#2962FF"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ricerca parcheggi in zona..."
+            android:textColor="#546E7A"
+            android:textSize="12sp"
+            android:layout_marginTop="8dp"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layout_error_retry"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="#FFFFFF"
+        android:padding="24dp"
+        android:visibility="gone"
+        android:elevation="10dp">
+
+        <ImageView
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_dialog_alert"
+            app:tint="#D32F2F"/>
+
+        <TextView
+            android:id="@+id/txt_error_msg"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Errore caricamento"
+            android:textColor="#D32F2F"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginTop="12dp"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_retry"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔄 Riprova"
+            app:backgroundTint="#2962FF"
+            android:textColor="#FFFFFF"
+            android:layout_marginTop="16dp"/>
+    </LinearLayout>
+
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_centra_posizione"
         android:layout_width="wrap_content"

@@ -47,6 +47,12 @@
             app:destination="@id/saveCarFragment"
             app:popUpTo="@id/homeFragment"
             app:popUpToInclusive="false"/>
+
+        <action
+            android:id="@+id/action_nav_to_home"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/homeFragment"
+            app:popUpToInclusive="true" />
     </fragment>
 
     <fragment

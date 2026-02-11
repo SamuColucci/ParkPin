@@ -2,12 +2,17 @@ package com.example.parkpin;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.view.LayoutInflater;
@@ -25,6 +30,9 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
 
+import org.osmdroid.bonuspack.routing.OSRMRoadManager;
+import org.osmdroid.bonuspack.routing.Road;
+import org.osmdroid.bonuspack.routing.RoadManager;
 import org.osmdroid.config.Configuration;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.GeoPoint;
@@ -33,9 +41,6 @@ import org.osmdroid.views.overlay.Marker;
 import org.osmdroid.views.overlay.Polyline;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
-import org.osmdroid.bonuspack.routing.OSRMRoadManager;
-import org.osmdroid.bonuspack.routing.Road;
-import org.osmdroid.bonuspack.routing.RoadManager;
 
 import java.util.ArrayList;
 
@@ -54,8 +59,8 @@ public class NavFragment extends Fragment {
     private boolean isPrimaDisegnoEffettuato = false;
     private boolean navigationCompleted = false;
 
-    private android.location.LocationManager locationManager;
-    private android.location.LocationListener locationListener;
+    private LocationManager locationManager;
+    private LocationListener locationListener;
 
     private final ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
@@ -148,10 +153,10 @@ public class NavFragment extends Fragment {
         }
         map.getOverlays().add(myLocationOverlay);
 
-        locationManager = (android.location.LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
-        locationListener = new android.location.LocationListener() {
+        locationManager = (LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
+        locationListener = new LocationListener() {
             @Override
-            public void onLocationChanged(@NonNull android.location.Location location) {
+            public void onLocationChanged(@NonNull Location location) {
                 if (navigationCompleted) return;
                 GeoPoint posAttuale = new GeoPoint(location.getLatitude(), location.getLongitude());
 
@@ -163,10 +168,12 @@ public class NavFragment extends Fragment {
                 }
 
                 double distanzaMetri = posAttuale.distanceToAsDouble(destinazionePoint);
-                if (distanzaMetri < 40) { // ARRIVATO
+
+                // SOGLIA ARRIVO: 40 metri
+                if (distanzaMetri < 40) {
                     txtIstruzione.setText("Sei arrivato! 🎉");
                     txtDistanza.setText("0 m");
-                    gestisciArrivo();
+                    gestisciArrivo(); // Chiama la fine navigazione
                     return;
                 }
 
@@ -181,7 +188,7 @@ public class NavFragment extends Fragment {
         };
 
         try {
-            locationManager.requestLocationUpdates(android.location.LocationManager.GPS_PROVIDER, 2000, 5, locationListener);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000, 5, locationListener);
         } catch (SecurityException e) { e.printStackTrace(); }
     }
 
@@ -231,16 +238,15 @@ public class NavFragment extends Fragment {
         map.invalidate();
     }
 
-    // --- CANCELLAZIONE TOTALE ALL'ARRIVO ---
+    // --- MODIFICATO: RITORNA ALLA HOME ---
     private void gestisciArrivo() {
         if (navigationCompleted) return;
         navigationCompleted = true;
         pulisciRisorse();
 
-        Toast.makeText(requireContext(), "Arrivato a destinazione!", Toast.LENGTH_LONG).show();
+        Toast.makeText(requireContext(), "🎉 Arrivato a destinazione!", Toast.LENGTH_LONG).show();
 
-        // 1. CANCELLA TUTTO ORA.
-        // Se riapri l'app dopo questo punto, sei nella Home pulita.
+        // 1. Rimuovi lo stato "navigazione attiva" dalle preferenze
         requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE)
                 .edit()
                 .remove("navigazione_attiva")
@@ -250,17 +256,8 @@ public class NavFragment extends Fragment {
                 .remove("dest_is_paid")
                 .apply();
 
-        // 2. PASSA I DATI SOLO IN MEMORIA (Bundle)
-        // Questi dati vivono solo per il passaggio tra NavFragment -> SaveCarFragment
-        Bundle bundle = new Bundle();
-        bundle.putBoolean("is_paid", isPagamento);
-        bundle.putFloat("lat_arrivo", (float) destinazionePoint.getLatitude());
-        bundle.putFloat("lon_arrivo", (float) destinazionePoint.getLongitude());
-
-        NavController navController = NavHostFragment.findNavController(this);
-        if (navController.getCurrentDestination() != null && navController.getCurrentDestination().getId() == R.id.navFragment) {
-            navController.navigate(R.id.action_nav_to_save, bundle);
-        }
+        // 2. Torna alla Home
+        tornaAllaHome();
     }
 
     private void stopNavigazioneManuale() {
@@ -279,8 +276,8 @@ public class NavFragment extends Fragment {
     }
 
     private void apriGoogleMaps() {
-        android.net.Uri gmmIntentUri = android.net.Uri.parse("google.navigation:q=" + destinazionePoint.getLatitude() + "," + destinazionePoint.getLongitude());
-        android.content.Intent mapIntent = new android.content.Intent(android.content.Intent.ACTION_VIEW, gmmIntentUri);
+        Uri gmmIntentUri = Uri.parse("google.navigation:q=" + destinazionePoint.getLatitude() + "," + destinazionePoint.getLongitude());
+        Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
         mapIntent.setPackage("com.google.android.apps.maps");
         try { startActivity(mapIntent); } catch (Exception e) {}
     }
@@ -294,7 +291,13 @@ public class NavFragment extends Fragment {
     }
 
     private void tornaAllaHome() {
-        try { NavHostFragment.findNavController(this).popBackStack(R.id.homeFragment, false); } catch (Exception e) {}
+        // Naviga al Fragment Home
+        try {
+            NavHostFragment.findNavController(this).navigate(R.id.action_nav_to_home);
+        } catch (Exception e) {
+            // Fallback se l'azione non esiste (es. popBackStack)
+            NavHostFragment.findNavController(this).popBackStack(R.id.homeFragment, false);
+        }
     }
 
     public static Bitmap getBitmapFromVectorDrawable(Context context, int drawableId) {

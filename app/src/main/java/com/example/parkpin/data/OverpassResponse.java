@@ -4,7 +4,6 @@ import com.google.gson.annotations.SerializedName;
 import java.util.List;
 
 public class OverpassResponse {
-
     @SerializedName("elements")
     public List<Elemento> elementi;
 
@@ -13,35 +12,36 @@ public class OverpassResponse {
         public double lat;
         public double lon;
         public Tags tags;
-
-        // --- QUESTA È LA PARTE CHE MANCAVA ---
         public Center center;
-        // -------------------------------------
     }
 
-    // --- NUOVA CLASSE PER IL CENTRO DELLE AREE ---
     public static class Center {
         public double lat;
         public double lon;
     }
-    // ---------------------------------------------
 
     public static class Tags {
+        // Mappiamo il campo JSON "name" alla variabile Java "name"
         @SerializedName("name")
-        public String nome;
+        public String name;
 
+        // Mappiamo "addr:street" (che contiene i due punti) alla variabile "street"
         @SerializedName("addr:street")
-        public String strada;
+        public String street;
 
-        @SerializedName("addr:housenumber")
-        public String numeroCivico;
+        // Mappiamo il costo
+        @SerializedName("fee")
+        public String fee;
 
-        public String operator;
-        public String fee;      // "yes", "no", o importo
-        public String capacity; // Numero posti
-
-        // Altri tag utili se vuoi espandere in futuro
-        public String access;
+        // Tipo di parcheggio (strada, garage, surface)
+        @SerializedName("parking")
         public String parking;
+
+        // Operatore (es. Saba, Comune...) utile se manca il nome
+        @SerializedName("operator")
+        public String operator;
+
+        @SerializedName("capacity")
+        public String capacity;
     }
 }

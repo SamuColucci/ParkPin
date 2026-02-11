@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.location.Location;
+import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.util.Log;
@@ -14,9 +15,10 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.ProgressBar;
+import android.widget.LinearLayout;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -31,7 +33,6 @@ import androidx.navigation.fragment.NavHostFragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import org.osmdroid.config.Configuration;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
@@ -50,16 +51,12 @@ import retrofit2.converter.gson.GsonConverterFactory;
 import retrofit2.http.GET;
 import retrofit2.http.Query;
 
-// --- IMPORT NECESSARI PER RISOLVERE ERRORE CONNESSIONE ---
 import okhttp3.OkHttpClient;
-import okhttp3.Request;
 import java.util.concurrent.TimeUnit;
-// ---------------------------------------------------------
-
 import java.util.ArrayList;
 import java.util.List;
 
-public class SearchFragment extends Fragment {
+public class SearchFragment extends Fragment implements LocationListener {
 
     public interface OverpassService {
         @GET("interpreter")
@@ -68,15 +65,23 @@ public class SearchFragment extends Fragment {
 
     private MapView map;
     private MyLocationNewOverlay myLocationOverlay;
-    private ProgressBar loadingBar;
     private TextView txtCriteriAttivi;
     private RecyclerView recyclerViewResults;
+
+    // UI ELEMENTS
+    private LinearLayout loadingContainer;
+    private LinearLayout layoutError;
+    private TextView txtErrorMsg;
+    private Button btnRetry;
+    private Button btnToggleList; // NUOVO
 
     private List<OverpassResponse.Elemento> tuttiParcheggiScaricati = new ArrayList<>();
     private List<Marker> markersAttuali = new ArrayList<>();
     private ParcheggioAdapter adapter;
+    private LocationManager locationManager;
 
     private boolean isPrimoCaricamentoEffettuato = false;
+    private boolean isListaVisibile = false; // Stato della lista
     private String currentFiltroTesto = "";
     private String currentFiltroCosto = "TUTTI";
 
@@ -97,10 +102,15 @@ public class SearchFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        loadingBar = view.findViewById(R.id.loading_bar);
-        txtCriteriAttivi = view.findViewById(R.id.txt_criteri_attivi);
+        // UI BINDING
         map = view.findViewById(R.id.map);
+        txtCriteriAttivi = view.findViewById(R.id.txt_criteri_attivi);
         recyclerViewResults = view.findViewById(R.id.recycler_view_results);
+        loadingContainer = view.findViewById(R.id.loading_container);
+        layoutError = view.findViewById(R.id.layout_error_retry);
+        txtErrorMsg = view.findViewById(R.id.txt_error_msg);
+        btnRetry = view.findViewById(R.id.btn_retry);
+        btnToggleList = view.findViewById(R.id.btn_toggle_list); // NUOVO
 
         // LISTA
         recyclerViewResults.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -111,9 +121,9 @@ public class SearchFragment extends Fragment {
         // MAPPA
         map.setTileSource(TileSourceFactory.MAPNIK);
         map.setMultiTouchControls(true);
-        map.getController().setZoom(17.0);
+        map.getController().setZoom(16.5);
 
-        // DOPPIO CLICK
+        // TOUCH OVERLAY
         Overlay touchOverlay = new Overlay() {
             @Override
             public boolean onDoubleTap(MotionEvent e, MapView mapView) {
@@ -125,6 +135,7 @@ public class SearchFragment extends Fragment {
         };
         map.getOverlays().add(touchOverlay);
 
+        // GPS
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             attivaPosizioneUtente();
         } else {
@@ -134,17 +145,44 @@ public class SearchFragment extends Fragment {
         // LISTENERS
         view.findViewById(R.id.btn_cerca_parcheggi).setOnClickListener(v -> mostrarDialogFiltri());
 
+        // --- NUOVA LOGICA PULSANTE MOSTRA/NASCONDI LISTA ---
+        btnToggleList.setOnClickListener(v -> {
+            if (isListaVisibile) {
+                // Nascondi
+                recyclerViewResults.setVisibility(View.GONE);
+                btnToggleList.setText("Lista ⬇");
+                isListaVisibile = false;
+            } else {
+                // Mostra (se ci sono dati)
+                if (!adapter.isEmpty()) {
+                    recyclerViewResults.setVisibility(View.VISIBLE);
+                    btnToggleList.setText("Lista ⬆");
+                    isListaVisibile = true;
+                } else {
+                    Toast.makeText(requireContext(), "Nessun risultato da mostrare", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+        // --------------------------------------------------
+
         view.findViewById(R.id.fab_centra_posizione).setOnClickListener(v -> {
             if (myLocationOverlay != null && myLocationOverlay.getMyLocation() != null) {
                 GeoPoint myPos = myLocationOverlay.getMyLocation();
                 map.getController().animateTo(myPos);
                 myLocationOverlay.enableFollowLocation();
-                scaricaDatiParcheggi(myPos.getLatitude(), myPos.getLongitude());
+                checkDatiEVisualizza(myPos.getLatitude(), myPos.getLongitude(), true);
             } else {
-                Toast.makeText(requireContext(), "Ricerca GPS in corso...", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Attendo GPS...", Toast.LENGTH_SHORT).show();
                 attivaPosizioneUtente();
             }
         });
+
+        btnRetry.setOnClickListener(v -> {
+            GeoPoint center = (GeoPoint) map.getMapCenter();
+            scaricaDatiParcheggi(center.getLatitude(), center.getLongitude());
+        });
+
+        view.findViewById(R.id.btn_back_home).setOnClickListener(v -> NavHostFragment.findNavController(this).popBackStack());
     }
 
     private void attivaPosizioneUtente() {
@@ -154,19 +192,26 @@ public class SearchFragment extends Fragment {
         myLocationOverlay.enableMyLocation();
         map.getOverlays().add(myLocationOverlay);
 
-        LocationManager lm = (LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
+        locationManager = (LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
         Location lastKnown = null;
-        try { lastKnown = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER); } catch (Exception e) {}
-        if (lastKnown == null) try { lastKnown = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER); } catch (Exception e) {}
+        try { lastKnown = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER); } catch (Exception e) {}
+        if (lastKnown == null) try { lastKnown = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER); } catch (Exception e) {}
 
         if (lastKnown != null) {
+            Log.d("PARKPIN_DEBUG", "Posizione trovata subito: " + lastKnown.getLatitude());
             GeoPoint startPoint = new GeoPoint(lastKnown.getLatitude(), lastKnown.getLongitude());
             map.getController().setCenter(startPoint);
-
             if (!isPrimoCaricamentoEffettuato) {
-                scaricaDatiParcheggi(startPoint.getLatitude(), startPoint.getLongitude());
+                checkDatiEVisualizza(startPoint.getLatitude(), startPoint.getLongitude(), false);
                 isPrimoCaricamentoEffettuato = true;
             }
+        } else {
+            Log.d("PARKPIN_DEBUG", "GPS Freddo in Search. Richiedo aggiornamento...");
+            loadingContainer.setVisibility(View.VISIBLE);
+            try {
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
+                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, this);
+            } catch (Exception e) {}
         }
 
         myLocationOverlay.runOnFirstFix(() -> {
@@ -175,7 +220,7 @@ public class SearchFragment extends Fragment {
                     GeoPoint myPos = myLocationOverlay.getMyLocation();
                     if (myPos != null && !isPrimoCaricamentoEffettuato) {
                         map.getController().animateTo(myPos);
-                        scaricaDatiParcheggi(myPos.getLatitude(), myPos.getLongitude());
+                        checkDatiEVisualizza(myPos.getLatitude(), myPos.getLongitude(), false);
                         isPrimoCaricamentoEffettuato = true;
                     }
                 });
@@ -183,79 +228,95 @@ public class SearchFragment extends Fragment {
         });
     }
 
-    // --- METODO FIXATO PER LA CONNESSIONE ---
-    // --- METODO AGGIORNATO: Server Kumi Systems (Molto Affidabile) ---
+    @Override
+    public void onLocationChanged(@NonNull Location location) {
+        if (locationManager != null) locationManager.removeUpdates(this);
+        if (!isPrimoCaricamentoEffettuato) {
+            map.getController().animateTo(new GeoPoint(location.getLatitude(), location.getLongitude()));
+            checkDatiEVisualizza(location.getLatitude(), location.getLongitude(), false);
+            isPrimoCaricamentoEffettuato = true;
+        }
+    }
+
+    private void checkDatiEVisualizza(double lat, double lon, boolean fromButton) {
+        boolean usaCache = false;
+        if (ParkingCache.parcheggiSalvati != null && !ParkingCache.parcheggiSalvati.isEmpty() && ParkingCache.posizioneSalvataggio != null) {
+            GeoPoint attuale = new GeoPoint(lat, lon);
+            if (attuale.distanceToAsDouble(ParkingCache.posizioneSalvataggio) < 2000) usaCache = true;
+        }
+
+        if (usaCache) {
+            loadingContainer.setVisibility(View.GONE);
+            layoutError.setVisibility(View.GONE);
+            tuttiParcheggiScaricati = ParkingCache.parcheggiSalvati;
+            if (fromButton) Toast.makeText(requireContext(), "Uso dati in memoria ⚡", Toast.LENGTH_SHORT).show();
+            visualizzaDati(currentFiltroTesto, currentFiltroCosto, true);
+        } else {
+            scaricaDatiParcheggi(lat, lon);
+        }
+    }
+
     private void scaricaDatiParcheggi(double lat, double lon) {
-        if (lat == 0 || lon == 0) return;
+        loadingContainer.setVisibility(View.VISIBLE);
+        layoutError.setVisibility(View.GONE);
 
-        loadingBar.setVisibility(View.VISIBLE);
+        Log.d("PARKPIN_DEBUG", "🚀 Inizio download Search da: " + lat + ", " + lon);
 
-        // 1. Client HTTP Sicuro
         OkHttpClient client = new OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .addInterceptor(chain -> {
-                    Request original = chain.request();
-                    Request request = original.newBuilder()
-                            .header("User-Agent", "ParkPinApp/1.0") // FONDAMENTALE
-                            .build();
-                    return chain.proceed(request);
-                })
+                .connectTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
+                .addInterceptor(chain -> chain.proceed(chain.request().newBuilder().header("User-Agent", "ParkPinApp/1.0").build()))
                 .build();
 
-        // 2. USO IL SERVER "KUMI SYSTEMS" (Il più stabile al mondo per Overpass)
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("https://overpass.kumi.systems/api/") // <--- URL CAMBIATO
+                .baseUrl("https://overpass-api.de/api/")
                 .client(client)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
 
         OverpassService service = retrofit.create(OverpassService.class);
 
-        // 3. Query (Raggio 1500m)
-        String query = "[out:json][timeout:25];" +
-                "nwr[\"amenity\"=\"parking\"](around:1500," + lat + "," + lon + ");" +
+        String query = "[out:json][timeout:60];" +
+                "nwr[\"amenity\"=\"parking\"](around:2000," + lat + "," + lon + ");" +
                 "out tags center;";
 
         service.cercaParcheggi(query).enqueue(new Callback<OverpassResponse>() {
             @Override
-            public void onResponse(@NonNull Call<OverpassResponse> call, @NonNull Response<OverpassResponse> response) {
-                loadingBar.setVisibility(View.GONE);
+            public void onResponse(Call<OverpassResponse> call, Response<OverpassResponse> response) {
+                loadingContainer.setVisibility(View.GONE);
+                if (!isAdded() || map == null || map.getRepository() == null) {
+                    return; // L'utente è uscito, fermiamo tutto!
+                }
 
                 if (response.isSuccessful() && response.body() != null) {
-                    tuttiParcheggiScaricati = response.body().elementi;
-                    if(tuttiParcheggiScaricati == null) tuttiParcheggiScaricati = new ArrayList<>();
-
-                    boolean mostraLista = !currentFiltroCosto.equals("TUTTI") || !currentFiltroTesto.isEmpty();
-                    visualizzaDati(currentFiltroTesto, currentFiltroCosto, mostraLista);
-
-                    if (!tuttiParcheggiScaricati.isEmpty()) {
-                        Toast.makeText(requireContext(), "Trovati " + tuttiParcheggiScaricati.size() + " parcheggi!", Toast.LENGTH_SHORT).show();
+                    List<OverpassResponse.Elemento> risultati = response.body().elementi;
+                    if (risultati == null || risultati.isEmpty()) {
+                        layoutError.setVisibility(View.VISIBLE);
+                        txtErrorMsg.setText("Nessun parcheggio trovato in 2km.");
+                        tuttiParcheggiScaricati = new ArrayList<>();
                     } else {
-                        Toast.makeText(requireContext(), "Nessun parcheggio in zona (1.5km).", Toast.LENGTH_SHORT).show();
+                        tuttiParcheggiScaricati = risultati;
+                        ParkingCache.parcheggiSalvati = tuttiParcheggiScaricati;
+                        ParkingCache.posizioneSalvataggio = new GeoPoint(lat, lon);
+
+                        boolean mostraLista = !currentFiltroCosto.equals("TUTTI") || !currentFiltroTesto.isEmpty();
+                        visualizzaDati(currentFiltroTesto, currentFiltroCosto, mostraLista);
+                        Log.d("PARKPIN_DEBUG", "✅ SUCCESSO Search: " + tuttiParcheggiScaricati.size());
+                        Toast.makeText(requireContext(), "Trovati: " + tuttiParcheggiScaricati.size(), Toast.LENGTH_SHORT).show();
                     }
                 } else {
-                    // Errore specifico del server
-                    String msg = "Errore Server: " + response.code();
-                    Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
-                    Log.e("ParkPin", "Errore Body: " + response.errorBody());
+                    layoutError.setVisibility(View.VISIBLE);
+                    txtErrorMsg.setText("Errore Server: " + response.code());
+                    Log.e("PARKPIN_DEBUG", "⚠️ Errore Server Search: " + response.code());
                 }
             }
 
             @Override
-            public void onFailure(@NonNull Call<OverpassResponse> call, @NonNull Throwable t) {
-                loadingBar.setVisibility(View.GONE);
-
-                // DIAGNOSTICA: Capiamo perché fallisce
-                String errorMsg = t.getMessage();
-                if (errorMsg != null && errorMsg.contains("Unable to resolve host")) {
-                    Toast.makeText(requireContext(), "Nessuna connessione Internet!", Toast.LENGTH_LONG).show();
-                } else if (errorMsg != null && errorMsg.contains("timeout")) {
-                    Toast.makeText(requireContext(), "Connessione lenta (Timeout).", Toast.LENGTH_LONG).show();
-                } else {
-                    Toast.makeText(requireContext(), "Errore rete generico.", Toast.LENGTH_SHORT).show();
-                }
-                Log.e("ParkPin", "Errore Rete Dettagliato: ", t);
+            public void onFailure(Call<OverpassResponse> call, Throwable t) {
+                loadingContainer.setVisibility(View.GONE);
+                layoutError.setVisibility(View.VISIBLE);
+                txtErrorMsg.setText("Errore di connessione.");
+                Log.e("PARKPIN_DEBUG", "❌ FALLITO Search: " + t.getMessage());
             }
         });
     }
@@ -276,18 +337,24 @@ public class SearchFragment extends Fragment {
         catch (Exception e) { iconResId = android.R.drawable.ic_menu_mapmode; }
 
         for (OverpassResponse.Elemento p : tuttiParcheggiScaricati) {
-
             if (p.lat == 0 && p.center != null) { p.lat = p.center.lat; p.lon = p.center.lon; }
             if (p.lat == 0 || p.lon == 0) continue;
 
-            String nome = (p.tags != null && p.tags.nome != null) ? p.tags.nome : "Parcheggio";
-            String strada = (p.tags != null && p.tags.strada != null) ? p.tags.strada : "";
+            String nome = "Parcheggio";
+            if (p.tags != null) {
+                if (p.tags.name != null && !p.tags.name.isEmpty()) nome = p.tags.name;
+                else if (p.tags.operator != null && !p.tags.operator.isEmpty()) nome = "Parcheggio " + p.tags.operator;
+                else nome = "Parcheggio Pubblico";
+            }
+
+            // LOGICA STRADA
+            String strada = (p.tags != null && p.tags.street != null) ? p.tags.street : "";
 
             boolean isPagamento = false;
             if (p.tags != null) {
                 String fee = p.tags.fee;
                 if (fee != null && !fee.equalsIgnoreCase("no")) isPagamento = true;
-                if (fee != null && (fee.contains("pay") || fee.contains("yes") || fee.contains("ticket"))) isPagamento = true;
+                if (fee != null && (fee.contains("pay") || fee.contains("ticket") || fee.contains("yes"))) isPagamento = true;
                 if (p.tags.parking != null && (p.tags.parking.contains("garage") || p.tags.parking.contains("multi"))) {
                     if (fee == null || !fee.equalsIgnoreCase("no")) isPagamento = true;
                 }
@@ -295,7 +362,6 @@ public class SearchFragment extends Fragment {
 
             if (costo.equals("GRATIS") && isPagamento) continue;
             if (costo.equals("PAGAMENTO") && !isPagamento) continue;
-
             if (!testo.isEmpty()) {
                 String s = testo.toLowerCase();
                 if (!nome.toLowerCase().contains(s) && !strada.toLowerCase().contains(s)) continue;
@@ -307,7 +373,7 @@ public class SearchFragment extends Fragment {
             m.setPosition(new GeoPoint(p.lat, p.lon));
             m.setTitle(nome);
             m.setSnippet(isPagamento ? "A Pagamento" : "Gratis");
-            m.setSubDescription(strada);
+            if (!strada.isEmpty()) m.setSubDescription(strada);
             m.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
 
             Drawable icon = ContextCompat.getDrawable(requireContext(), iconResId);
@@ -318,8 +384,9 @@ public class SearchFragment extends Fragment {
             }
 
             boolean finalIsPagamento = isPagamento;
+            String finalNome = nome;
             m.setOnMarkerClickListener((marker, mapView) -> {
-                confermaNavigazione(nome, marker.getPosition(), finalIsPagamento);
+                confermaNavigazione(finalNome, marker.getPosition(), finalIsPagamento);
                 return true;
             });
 
@@ -329,10 +396,16 @@ public class SearchFragment extends Fragment {
         map.invalidate();
 
         adapter.aggiornaDati(risultatiFiltrati);
+
+        // Se la lista era aperta o i filtri richiedono visualizzazione, mostrala
         if (mostraLista && !risultatiFiltrati.isEmpty()) {
             recyclerViewResults.setVisibility(View.VISIBLE);
+            btnToggleList.setText("Lista ⬆");
+            isListaVisibile = true;
         } else {
             recyclerViewResults.setVisibility(View.GONE);
+            btnToggleList.setText("Lista ⬇");
+            isListaVisibile = false;
         }
     }
 
@@ -345,7 +418,6 @@ public class SearchFragment extends Fragment {
 
         EditText etNome = view.findViewById(R.id.et_filtro_nome);
         RadioGroup rgCosto = view.findViewById(R.id.rg_costo);
-
         etNome.setText(currentFiltroTesto);
         if(currentFiltroCosto.equals("GRATIS")) rgCosto.check(R.id.rb_gratis);
         else if(currentFiltroCosto.equals("PAGAMENTO")) rgCosto.check(R.id.rb_pagamento);
@@ -357,10 +429,7 @@ public class SearchFragment extends Fragment {
             int id = rgCosto.getCheckedRadioButtonId();
             if (id == R.id.rb_gratis) currentFiltroCosto = "GRATIS";
             else if (id == R.id.rb_pagamento) currentFiltroCosto = "PAGAMENTO";
-
-            GeoPoint center = (GeoPoint) map.getMapCenter();
-            if(center.getLatitude() != 0) scaricaDatiParcheggi(center.getLatitude(), center.getLongitude());
-
+            visualizzaDati(currentFiltroTesto, currentFiltroCosto, true);
             dialog.dismiss();
         });
         dialog.show();
@@ -370,9 +439,14 @@ public class SearchFragment extends Fragment {
         GeoPoint point = new GeoPoint(p.lat, p.lon);
         map.getController().animateTo(point);
         map.getController().setZoom(19.0);
-        String nome = (p.tags != null && p.tags.nome != null) ? p.tags.nome : "Parcheggio";
-        boolean isPagamento = false;
-        if (p.tags != null && p.tags.fee != null && !p.tags.fee.equalsIgnoreCase("no")) isPagamento = true;
+
+        String nome = "Parcheggio";
+        if (p.tags != null) {
+            if (p.tags.name != null && !p.tags.name.isEmpty()) nome = p.tags.name;
+            else if (p.tags.operator != null && !p.tags.operator.isEmpty()) nome = "Parcheggio " + p.tags.operator;
+        }
+
+        boolean isPagamento = p.tags != null && p.tags.fee != null && !p.tags.fee.equalsIgnoreCase("no");
         confermaNavigazione(nome, point, isPagamento);
     }
 
@@ -409,28 +483,46 @@ public class SearchFragment extends Fragment {
         NavHostFragment.findNavController(this).navigate(R.id.action_search_to_nav, bundle);
     }
 
+    // --- ADAPTER AGGIORNATO CON STRADA ---
     private static class ParcheggioAdapter extends RecyclerView.Adapter<ParcheggioAdapter.ViewHolder> {
         private List<OverpassResponse.Elemento> list;
         private final OnItemClickListener listener;
         public interface OnItemClickListener { void onItemClick(OverpassResponse.Elemento item); }
         public ParcheggioAdapter(List<OverpassResponse.Elemento> list, OnItemClickListener listener) { this.list = list; this.listener = listener; }
         public void aggiornaDati(List<OverpassResponse.Elemento> nuoviDati) { this.list = nuoviDati; notifyDataSetChanged(); }
+        public boolean isEmpty() { return list == null || list.isEmpty(); }
+
         @NonNull @Override public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             return new ViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.item_parking, parent, false));
         }
+
         @Override public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             OverpassResponse.Elemento p = list.get(position);
-            String nome = (p.tags != null && p.tags.nome != null) ? p.tags.nome : "Parcheggio";
+
+            // Nome
+            String nome = "Parcheggio";
+            if (p.tags != null) {
+                if (p.tags.name != null && !p.tags.name.isEmpty()) nome = p.tags.name;
+                else if (p.tags.operator != null && !p.tags.operator.isEmpty()) nome = "Parcheggio " + p.tags.operator;
+                else nome = "Parcheggio Pubblico";
+            }
+
+            // Strada
+            String strada = (p.tags != null && p.tags.street != null) ? p.tags.street : "";
 
             boolean isPagamento = false;
             if (p.tags != null) {
                 String fee = p.tags.fee;
                 if (fee != null && !fee.equalsIgnoreCase("no")) isPagamento = true;
-                if (fee != null && (fee.contains("pay") || fee.contains("ticket"))) isPagamento = true;
             }
 
             holder.txtName.setText(nome);
-            holder.txtType.setText(isPagamento ? "💰 Pagamento" : "🆓 Gratis");
+
+            // Info complete: Pagamento + Strada
+            String info = isPagamento ? "💰 Pagamento" : "🆓 Gratis";
+            if (!strada.isEmpty()) info += " • " + strada;
+            holder.txtType.setText(info);
+
             holder.txtType.setTextColor(isPagamento ? Color.parseColor("#D32F2F") : Color.parseColor("#388E3C"));
             holder.imgIcon.setColorFilter(isPagamento ? Color.parseColor("#D32F2F") : Color.parseColor("#388E3C"));
             holder.itemView.setOnClickListener(v -> listener.onItemClick(p));
@@ -442,17 +534,13 @@ public class SearchFragment extends Fragment {
         }
     }
 
-    public static android.graphics.Bitmap getBitmapFromVectorDrawable(Context context, int drawableId) {
-        Drawable drawable = ContextCompat.getDrawable(context, drawableId);
-        if (drawable == null) return null;
-        android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(drawable.getIntrinsicWidth(),
-                drawable.getIntrinsicHeight(), android.graphics.Bitmap.Config.ARGB_8888);
-        android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
-        drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
-        drawable.draw(canvas);
-        return bitmap;
-    }
+    @Override public void onStatusChanged(String provider, int status, Bundle extras) {}
+    @Override public void onProviderEnabled(@NonNull String provider) {}
+    @Override public void onProviderDisabled(@NonNull String provider) {}
 
-    @Override public void onResume() { super.onResume(); if(map!=null) map.onResume(); }
-    @Override public void onPause() { super.onPause(); if(map!=null) map.onPause(); }
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (locationManager != null) locationManager.removeUpdates(this);
+    }
 }

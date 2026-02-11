@@ -1,13 +1,14 @@
 package com.example.parkpin;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.view.LayoutInflater;
-import android.view.MotionEvent; // Importante per bloccare tocco mappa
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AlphaAnimation;
@@ -22,7 +23,6 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 
-// OSMDroid Imports
 import org.osmdroid.config.Configuration;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.GeoPoint;
@@ -33,16 +33,12 @@ import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 
 public class HomeFragment extends Fragment {
 
-    // Variabili UI
-    private LinearLayout layoutNormal;
-    private LinearLayout layoutNav;
-    private LinearLayout layoutRitorno;
-    private View containerCenter;
-    private View containerButtons;
+    private LinearLayout layoutNormal, layoutNav, layoutRitorno;
+    private View containerCenter, containerButtons;
     private TextView sottotitolo;
 
-    // Mappa Anteprima
-    private MapView mapPreview;
+    private MapView mapPreviewSaved;
+    private MapView mapPreviewCurrent;
     private MyLocationNewOverlay myLocationOverlay;
 
     public HomeFragment() {}
@@ -58,69 +54,34 @@ public class HomeFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // --- 1. RIFERIMENTI UI ---
+        // UI Setup
         View cardLogo = view.findViewById(R.id.card_logo);
         View titolo = view.findViewById(R.id.txt_titolo);
         sottotitolo = view.findViewById(R.id.txt_sottotitolo);
-
         containerCenter = view.findViewById(R.id.container_center);
         containerButtons = view.findViewById(R.id.container_buttons);
-
         layoutNormal = view.findViewById(R.id.layout_normal);
         layoutNav = view.findViewById(R.id.layout_navigazione);
         layoutRitorno = view.findViewById(R.id.layout_ritorno_auto);
 
-        mapPreview = view.findViewById(R.id.map_preview_home);
+        mapPreviewSaved = view.findViewById(R.id.map_preview_home);
+        mapPreviewCurrent = view.findViewById(R.id.map_preview_current);
 
-        // --- 2. LOGICA UI ---
-        boolean showLogo = aggiornaStatoUI();
+        aggiornaStatoUI();
 
-        // --- 3. ANIMAZIONI ---
-        if (showLogo) {
-            TranslateAnimation animLogo = new TranslateAnimation(0, 0, -200, 0);
-            animLogo.setDuration(1000);
-            animLogo.setFillAfter(true);
-            cardLogo.startAnimation(animLogo);
-
-            AlphaAnimation animText = new AlphaAnimation(0.0f, 1.0f);
-            animText.setDuration(1500);
-            animText.setStartOffset(500);
-            titolo.startAnimation(animText);
-            sottotitolo.startAnimation(animText);
-        }
-
-        TranslateAnimation animBtn = new TranslateAnimation(0, 0, 200, 0);
-        animBtn.setDuration(1000);
-        if (showLogo) animBtn.setStartOffset(800);
-        containerButtons.startAnimation(animBtn);
-
-        // --- 4. LISTENER ---
-        view.findViewById(R.id.btn_mappa).setOnClickListener(v ->
-                NavHostFragment.findNavController(this).navigate(R.id.action_home_to_search));
-
-        view.findViewById(R.id.btn_salva_posizione).setOnClickListener(v ->
-                NavHostFragment.findNavController(this).navigate(R.id.action_home_to_save));
-
-        view.findViewById(R.id.btn_continua_guida).setOnClickListener(v ->
-                NavHostFragment.findNavController(this).navigate(R.id.action_home_to_nav));
-
+        // Listeners
+        view.findViewById(R.id.btn_mappa).setOnClickListener(v -> NavHostFragment.findNavController(this).navigate(R.id.action_home_to_search));
+        view.findViewById(R.id.btn_salva_posizione).setOnClickListener(v -> NavHostFragment.findNavController(this).navigate(R.id.action_home_to_save));
+        view.findViewById(R.id.btn_continua_guida).setOnClickListener(v -> NavHostFragment.findNavController(this).navigate(R.id.action_home_to_nav));
         view.findViewById(R.id.btn_ritorna_auto).setOnClickListener(v -> avviaNavigazioneVersoAuto());
-
         view.findViewById(R.id.btn_elimina_auto).setOnClickListener(v -> {
-            SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
-            prefs.edit()
-                    .remove("auto_salvata")
-                    .remove("car_lat")
-                    .remove("car_lon")
-                    .remove("note_auto")
-                    .apply();
-
-            Toast.makeText(requireContext(), "Posizione auto rimossa.", Toast.LENGTH_SHORT).show();
-            aggiornaStatoUI(); // Ricarica UI immediata
+            requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE).edit()
+                    .remove("auto_salvata").remove("car_lat").remove("car_lon").remove("note_auto").apply();
+            aggiornaStatoUI();
         });
     }
 
-    private boolean aggiornaStatoUI() {
+    private void aggiornaStatoUI() {
         SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
         boolean isNavigazioneAttiva = prefs.getBoolean("navigazione_attiva", false);
         boolean isAutoSalvata = prefs.getBoolean("auto_salvata", false);
@@ -128,117 +89,108 @@ public class HomeFragment extends Fragment {
         layoutNormal.setVisibility(View.GONE);
         layoutNav.setVisibility(View.GONE);
         layoutRitorno.setVisibility(View.GONE);
-        containerCenter.setVisibility(View.VISIBLE);
 
         if (isNavigazioneAttiva) {
-            // Stiamo guidando (o tornando all'auto)
             layoutNav.setVisibility(View.VISIBLE);
             sottotitolo.setText("Navigazione in corso...");
-        }
-        else if (isAutoSalvata) {
-            // Auto parcheggiata
+        } else if (isAutoSalvata) {
             layoutRitorno.setVisibility(View.VISIBLE);
             sottotitolo.setText("La tua auto è al sicuro.");
-
             float lat = prefs.getFloat("car_lat", 0);
             float lon = prefs.getFloat("car_lon", 0);
-            if (lat != 0 && lon != 0) {
-                mostraAnteprimaMappa(lat, lon);
-            }
-        }
-        else {
-            // Stato iniziale
+            if (lat != 0) mostraMappaSaved(lat, lon);
+        } else {
             layoutNormal.setVisibility(View.VISIBLE);
             sottotitolo.setText("Trova. Parcheggia. Ritrova.");
+            mostraMappaPosizioneAttuale();
         }
-
-        return true;
     }
 
-    private void mostraAnteprimaMappa(double carLat, double carLon) {
-        if (mapPreview == null) return;
-
-        mapPreview.setTileSource(TileSourceFactory.MAPNIK);
-        mapPreview.setMultiTouchControls(false); // Disabilita tocco per anteprima statica
-        mapPreview.setBuiltInZoomControls(false);
-
-        // Blocca interazione tocco (Opzionale ma consigliato per le anteprime)
-        mapPreview.setOnTouchListener((v, event) -> true);
-
-        mapPreview.getController().setZoom(17.5);
-        GeoPoint carPoint = new GeoPoint(carLat, carLon);
-        mapPreview.getController().setCenter(carPoint);
-
-        mapPreview.getOverlays().clear();
-
-        // 1. Marker Auto (Logica Icona Sicura)
-        Marker carMarker = new Marker(mapPreview);
-        carMarker.setPosition(carPoint);
-        carMarker.setTitle("La tua auto");
-        carMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
-
-        // Caricamento icona sicuro (Try-Catch come negli altri file)
+    private void mostraMappaSaved(double lat, double lon) {
+        if (mapPreviewSaved == null) return;
+        mapPreviewSaved.setTileSource(TileSourceFactory.MAPNIK);
+        mapPreviewSaved.setMultiTouchControls(false);
+        mapPreviewSaved.getController().setZoom(17.5);
+        GeoPoint p = new GeoPoint(lat, lon);
+        mapPreviewSaved.getController().setCenter(p);
+        mapPreviewSaved.getOverlays().clear();
+        Marker m = new Marker(mapPreviewSaved);
+        m.setPosition(p);
         try {
             Drawable icon = ContextCompat.getDrawable(requireContext(), R.drawable.baseline_directions_car_24);
-            if (icon != null) {
-                icon = icon.getConstantState().newDrawable().mutate();
-                icon.setTint(Color.RED); // Auto rossa
-                carMarker.setIcon(icon);
-            }
-        } catch (Exception e) {
-            // Fallback silenzioso
-        }
-        mapPreview.getOverlays().add(carMarker);
-
-        // 2. Marker Utente (Solo visualizzazione)
-        myLocationOverlay = new MyLocationNewOverlay(new GpsMyLocationProvider(requireContext()), mapPreview);
-        myLocationOverlay.enableMyLocation();
-        // Rimuovi freccia direzione per pulizia visiva, lascia solo pallino (opzionale)
-        mapPreview.getOverlays().add(myLocationOverlay);
-
-        mapPreview.invalidate();
+            if(icon!=null){ icon.setTint(Color.RED); m.setIcon(icon); }
+        } catch(Exception e){}
+        mapPreviewSaved.getOverlays().add(m);
+        mapPreviewSaved.invalidate();
     }
 
-    private void avviaNavigazioneVersoAuto() {
-        SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
-        float carLat = prefs.getFloat("car_lat", 0);
-        float carLon = prefs.getFloat("car_lon", 0);
-        String note = prefs.getString("note_auto", "");
+    private void mostraMappaPosizioneAttuale() {
+        if (mapPreviewCurrent == null) return;
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return;
 
-        if (carLat == 0 || carLon == 0) {
-            Toast.makeText(requireContext(), "Errore posizione auto", Toast.LENGTH_SHORT).show();
-            return;
+        mapPreviewCurrent.setTileSource(TileSourceFactory.MAPNIK);
+        mapPreviewCurrent.setMultiTouchControls(false);
+        mapPreviewCurrent.getController().setZoom(17.0);
+
+        // Se torniamo indietro e l'overlay esiste già, lo rimuoviamo per ricrearlo pulito
+        if (myLocationOverlay != null) {
+            mapPreviewCurrent.getOverlays().remove(myLocationOverlay);
+            myLocationOverlay.disableMyLocation();
+            myLocationOverlay = null;
         }
 
-        Bundle bundle = new Bundle();
-        bundle.putFloat("dest_lat", carLat);
-        bundle.putFloat("dest_lon", carLon);
-        bundle.putString("dest_nome", note.isEmpty() ? "La tua Auto" : "Auto: " + note);
-        bundle.putBoolean("dest_is_paid", false);
+        // Creazione pulita dell'overlay
+        GpsMyLocationProvider provider = new GpsMyLocationProvider(requireContext());
+        myLocationOverlay = new MyLocationNewOverlay(provider, mapPreviewCurrent);
+        myLocationOverlay.enableMyLocation();
+        mapPreviewCurrent.getOverlays().add(myLocationOverlay);
 
-        prefs.edit()
-                .putBoolean("navigazione_attiva", true)
-                .putFloat("dest_lat", carLat)
-                .putFloat("dest_lon", carLon)
-                .putString("dest_nome", "La tua Auto")
-                .apply();
+        myLocationOverlay.runOnFirstFix(() -> {
+            if (isAdded() && getActivity() != null) {
+                getActivity().runOnUiThread(() -> {
+                    if (mapPreviewCurrent != null && myLocationOverlay != null && myLocationOverlay.getMyLocation() != null) {
+                        mapPreviewCurrent.getController().animateTo(myLocationOverlay.getMyLocation());
+                    }
+                });
+            }
+        });
 
-        NavHostFragment.findNavController(this).navigate(R.id.action_home_to_nav, bundle);
+        mapPreviewCurrent.invalidate(); // Forza il ridisegno della mappa per togliere il celeste
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        if (mapPreview != null) mapPreview.onResume();
-        if (myLocationOverlay != null) myLocationOverlay.enableMyLocation();
-        // Aggiorna stato al ritorno (es. se ho finito navigazione)
-        aggiornaStatoUI();
+        if(mapPreviewSaved != null) mapPreviewSaved.onResume();
+        if(mapPreviewCurrent != null) mapPreviewCurrent.onResume();
+
+        // Se siamo nello stato normale (senza auto), forziamo il refresh della mappa attuale
+        SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
+        if (!prefs.getBoolean("auto_salvata", false) && !prefs.getBoolean("navigazione_attiva", false)) {
+            mostraMappaPosizioneAttuale();
+        }
+    }
+
+    private void avviaNavigazioneVersoAuto() {
+        SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
+        float lat = prefs.getFloat("car_lat", 0);
+        float lon = prefs.getFloat("car_lon", 0);
+        if (lat == 0) return;
+        Bundle b = new Bundle();
+        b.putFloat("dest_lat", lat);
+        b.putFloat("dest_lon", lon);
+        b.putString("dest_nome", "La tua Auto");
+        prefs.edit().putBoolean("navigazione_attiva", true).putFloat("dest_lat", lat).putFloat("dest_lon", lon).apply();
+        NavHostFragment.findNavController(this).navigate(R.id.action_home_to_nav, b);
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        if (mapPreview != null) mapPreview.onPause();
-        if (myLocationOverlay != null) myLocationOverlay.disableMyLocation();
+        if(mapPreviewSaved != null) mapPreviewSaved.onPause();
+        if(mapPreviewCurrent != null) mapPreviewCurrent.onPause();
+        if(myLocationOverlay != null) {
+            myLocationOverlay.disableMyLocation();
+        }
     }
 }

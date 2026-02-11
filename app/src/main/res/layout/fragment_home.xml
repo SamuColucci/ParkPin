@@ -50,7 +50,6 @@
             android:layout_marginTop="4dp"/>
     </LinearLayout>
 
-
     <LinearLayout
         android:id="@+id/container_buttons"
         android:layout_width="match_parent"
@@ -161,6 +160,44 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:visibility="visible">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Nessuna auto salvata al momento."
+                android:textColor="#546E7A"
+                android:gravity="center"
+                android:layout_marginBottom="16dp"/>
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="180dp"
+                android:layout_marginBottom="24dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp">
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <org.osmdroid.views.MapView
+                        android:id="@+id/map_preview_current"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Tu sei qui 📍"
+                        android:background="#CCFFFFFF"
+                        android:padding="6dp"
+                        android:textColor="#2962FF"
+                        android:textStyle="bold"
+                        android:layout_alignParentTop="true"
+                        android:layout_centerHorizontal="true"
+                        android:layout_marginTop="8dp"/>
+                </RelativeLayout>
+            </androidx.cardview.widget.CardView>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_mappa"
