@@ -381,25 +381,11 @@ public class SaveCarFragment extends Fragment implements LocationListener { // A
                 now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE), true).show();
     }
 
+    // Sostituisci il vecchio metodo schedulaNotifica con questo richiamo rapido:
     private void schedulaNotifica(int oraScadenza, int minutiScadenza) {
-        Calendar calendarScadenza = Calendar.getInstance();
-        calendarScadenza.set(Calendar.HOUR_OF_DAY, oraScadenza);
-        calendarScadenza.set(Calendar.MINUTE, minutiScadenza);
-        calendarScadenza.set(Calendar.SECOND, 0);
-        if (calendarScadenza.before(Calendar.getInstance())) calendarScadenza.add(Calendar.DAY_OF_MONTH, 1);
-        long tempoNotifica = calendarScadenza.getTimeInMillis() - (10 * 60 * 1000);
-        if (tempoNotifica <= System.currentTimeMillis()) {
-            Toast.makeText(requireContext(), "Troppo tardi!", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        AlarmManager am = (AlarmManager) requireContext().getSystemService(Context.ALARM_SERVICE);
-        Intent intent = new Intent(requireContext(), ParkingAlarmReceiver.class);
-        PendingIntent pi = PendingIntent.getBroadcast(requireContext(), 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !am.canScheduleExactAlarms()) {
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, tempoNotifica, pi);
-        } else {
-            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, tempoNotifica, pi);
-        }
+        NotificationHelper.prenotaAvviso(requireContext(), oraScadenza, minutiScadenza);
+
+        // Aggiorna solo la parte grafica del fragment
         String orario = String.format("%02d:%02d", oraScadenza, minutiScadenza);
         txtTimerStatus.setText("Scadenza: " + orario);
     }

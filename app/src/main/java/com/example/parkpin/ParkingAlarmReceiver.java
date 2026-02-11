@@ -10,45 +10,33 @@ import android.os.Build;
 import androidx.core.app.NotificationCompat;
 
 public class ParkingAlarmReceiver extends BroadcastReceiver {
+    private static final String CHANNEL_ID = "parking_channel";
+
     @Override
     public void onReceive(Context context, Intent intent) {
+        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 
-        // 1. Definisci l'ID del canale
-        String channelId = "parkpin_timer";
-
-        // 2. Ottieni il Manager
-        NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-
-        // 3. RICREA IL CANALE (Fondamentale su Android 8+)
-        // Se esiste già non fa nulla, se non esiste lo crea. È una sicurezza.
+        // Creazione Canale (obbligatorio da Android 8+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    channelId,
-                    "Scadenza Parcheggio",
-                    NotificationManager.IMPORTANCE_HIGH // Importanza ALTA per farlo suonare
-            );
-            channel.setDescription("Notifiche timer parcheggio");
-            channel.enableVibration(true);
-            notificationManager.createNotificationChannel(channel);
+                    CHANNEL_ID, "Scadenza Parcheggio",
+                    NotificationManager.IMPORTANCE_HIGH);
+            nm.createNotificationChannel(channel);
         }
 
-        // 4. Intent per aprire l'app quando clicchi
-        Intent tapIntent = new Intent(context, HomeFragment.class); // Apre la Welcome o la Main
-        tapIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, tapIntent, PendingIntent.FLAG_IMMUTABLE);
+        // Cosa succede al click sulla notifica
+        Intent mainIntent = new Intent(context, MainActivity.class);
+        PendingIntent pi = PendingIntent.getActivity(context, 0, mainIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        // 5. Costruisci la notifica
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
-                .setSmallIcon(android.R.drawable.ic_lock_idle_alarm) // Icona di sistema sicura
-                .setContentTitle("⚠️ SCADE IL PARCHEGGIO!")
-                .setContentText("Mancano 10 minuti. Corri!")
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.baseline_directions_car_24)
+                .setContentTitle("⚠️ Scadenza Parcheggio!")
+                .setContentText("Il tempo sta per scadere. Torna all'auto!")
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setCategory(NotificationCompat.CATEGORY_ALARM)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setAutoCancel(true)
-                .setContentIntent(pendingIntent);
+                .setContentIntent(pi);
 
-        // 6. SPARA LA NOTIFICA
-        notificationManager.notify(1001, builder.build());
+        nm.notify(101, builder.build());
     }
 }
