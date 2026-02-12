@@ -70,9 +70,17 @@ public class HomeFragment extends Fragment {
 
         aggiornaStatoUI();
 
-        // Listeners
-        view.findViewById(R.id.btn_mappa).setOnClickListener(v -> NavHostFragment.findNavController(this).navigate(R.id.action_home_to_search));
-        view.findViewById(R.id.btn_salva_posizione).setOnClickListener(v -> NavHostFragment.findNavController(this).navigate(R.id.action_home_to_save));
+        // --- LISTENERS ---
+
+        // Ricerca Parcheggio
+        view.findViewById(R.id.btn_mappa).setOnClickListener(v ->
+                NavHostFragment.findNavController(this).navigate(R.id.action_home_to_search));
+
+        // Salva Posizione Manuale
+        view.findViewById(R.id.btn_salva_posizione).setOnClickListener(v ->
+                NavHostFragment.findNavController(this).navigate(R.id.action_home_to_save));
+
+        // Continua Navigazione Esistente
         view.findViewById(R.id.btn_continua_guida).setOnClickListener(v -> {
             SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
             float lat = prefs.getFloat("dest_lat", 0);
@@ -85,13 +93,18 @@ public class HomeFragment extends Fragment {
                 b.putFloat("dest_lat", lat);
                 b.putFloat("dest_lon", lon);
                 b.putString("dest_nome", nome);
-                b.putString("dest_nota", nota); // PASSA LA NOTA
-                // Passiamo i dati al NavFragment
+                b.putString("dest_nota", nota);
                 NavHostFragment.findNavController(this).navigate(R.id.action_home_to_nav, b);
             }
         });
+
+        // Avvia Ritorno all'Auto
         view.findViewById(R.id.btn_ritorna_auto).setOnClickListener(v -> avviaNavigazioneVersoAuto());
 
+        // CONDIVIDI POSIZIONE (Nuovo!)
+        view.findViewById(R.id.btn_share_location).setOnClickListener(v -> condividiPosizioneAuto());
+
+        // Elimina Auto Salvata
         view.findViewById(R.id.btn_elimina_auto).setOnClickListener(v -> {
             try {
                 android.app.AlarmManager am = (android.app.AlarmManager) requireContext().getSystemService(Context.ALARM_SERVICE);
@@ -110,27 +123,57 @@ public class HomeFragment extends Fragment {
             Toast.makeText(requireContext(), "Posizione e timer eliminati", Toast.LENGTH_SHORT).show();
         });
 
-        // Listener per interrompere la navigazione dalla Home
+        // Interrompi Navigazione Attiva
         view.findViewById(R.id.btn_stop_nav_home).setOnClickListener(v -> {
             new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                     .setTitle("Interrompere?")
                     .setMessage("Vuoi davvero annullare la navigazione verso il parcheggio?")
                     .setPositiveButton("Sì, annulla", (dialog, which) -> {
-                        // Puliamo solo i dati della navigazione, NON quelli dell'auto salvata
                         requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE).edit()
                                 .putBoolean("navigazione_attiva", false)
-                                .remove("dest_lat")
-                                .remove("dest_lon")
-                                .remove("dest_nome")
-                                .remove("dest_is_paid")
+                                .remove("dest_lat").remove("dest_lon").remove("dest_nome").remove("dest_is_paid")
                                 .apply();
-
                         aggiornaStatoUI();
                         Toast.makeText(requireContext(), "Navigazione annullata", Toast.LENGTH_SHORT).show();
                     })
                     .setNegativeButton("No", null)
                     .show();
         });
+    }
+
+    // METODO SUPPORTO PER LA CONDIVISIONE
+    private void condividiPosizioneAuto() {
+        SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
+        float lat = prefs.getFloat("car_lat", 0);
+        float lon = prefs.getFloat("car_lon", 0);
+        String notaRaw = prefs.getString("note_auto", "");
+
+        if (lat != 0 && lon != 0) {
+            // Pulizia della stringa: rimuoviamo i prefissi ridondanti
+            String notaPulita = notaRaw.replace("Parcheggiato Presso :", "")
+                    .replace("Nota:", "")
+                    .trim();
+
+            String uri = "https://www.google.com/maps/search/?api=1&query=" + lat + "," + lon;
+
+            // Costruiamo il messaggio finale
+            StringBuilder messaggio = new StringBuilder();
+            messaggio.append("🚗 La mia auto è parcheggiata qui:\n").append(uri);
+
+            if (!notaPulita.isEmpty()) {
+                messaggio.append("\n\n📍 Info: ").append(notaPulita);
+            }
+
+            android.content.Intent sendIntent = new android.content.Intent();
+            sendIntent.setAction(android.content.Intent.ACTION_SEND);
+            sendIntent.putExtra(android.content.Intent.EXTRA_TEXT, messaggio.toString());
+            sendIntent.setType("text/plain");
+
+            android.content.Intent shareIntent = android.content.Intent.createChooser(sendIntent, "Condividi posizione tramite:");
+            startActivity(shareIntent);
+        } else {
+            Toast.makeText(requireContext(), "Errore: Posizione non trovata", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void aggiornaStatoUI() {

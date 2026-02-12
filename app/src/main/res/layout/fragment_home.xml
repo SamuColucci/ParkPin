@@ -132,15 +132,24 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:visibility="gone">
-            <TextView
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="🚗 La tua auto è qui:"
-                android:gravity="start"
-                android:textSize="18sp"
-                android:textColor="#37474F"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="🚗 La tua auto è qui:"
+                    android:textSize="18sp"
+                    android:textColor="#37474F"
+                    android:textStyle="bold"/>
+
+            </LinearLayout>
 
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
@@ -194,6 +203,16 @@
                 android:layout_marginTop="4dp"
                 android:text="❌ Elimina posizione"
                 android:textColor="#D32F2F"
+                style="@style/Widget.MaterialComponents.Button.TextButton"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_share_location"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Condividi posizione"
+                android:textColor="#2962FF"
+                app:icon="@android:drawable/ic_menu_share"
+                app:iconTint="#2962FF"
                 style="@style/Widget.MaterialComponents.Button.TextButton"/>
         </LinearLayout>
 
