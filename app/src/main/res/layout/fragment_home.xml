@@ -206,6 +206,16 @@
                 style="@style/Widget.MaterialComponents.Button.TextButton"/>
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_edit_note"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Modifica nota posizione"
+                android:textColor="#37474F"
+                app:icon="@android:drawable/ic_menu_edit"
+                app:iconTint="#37474F"
+                style="@style/Widget.MaterialComponents.Button.TextButton"/>
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_share_location"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -214,6 +224,7 @@
                 app:icon="@android:drawable/ic_menu_share"
                 app:iconTint="#2962FF"
                 style="@style/Widget.MaterialComponents.Button.TextButton"/>
+
         </LinearLayout>
 
         <LinearLayout

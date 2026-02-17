@@ -67,6 +67,8 @@ public class HomeFragment extends Fragment {
         mapPreviewSaved = view.findViewById(R.id.map_preview_home);
         mapPreviewCurrent = view.findViewById(R.id.map_preview_current);
         mapPreviewNav = view.findViewById(R.id.map_preview_nav);
+        // Modifica Nota Posizione
+        view.findViewById(R.id.btn_edit_note).setOnClickListener(v -> mostraDialogModificaNota());
 
         aggiornaStatoUI();
 
@@ -174,6 +176,39 @@ public class HomeFragment extends Fragment {
         } else {
             Toast.makeText(requireContext(), "Errore: Posizione non trovata", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void mostraDialogModificaNota() {
+        SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
+        String notaAttuale = prefs.getString("note_auto", "");
+
+        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(requireContext());
+        builder.setTitle("Modifica Nota");
+
+        // Creiamo un EditText per l'input
+        final android.widget.EditText input = new android.widget.EditText(requireContext());
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        input.setText(notaAttuale);
+        input.setSelection(input.getText().length()); // Cursore alla fine
+
+        // Aggiungiamo un po' di margine all'EditText
+        android.widget.FrameLayout container = new android.widget.FrameLayout(requireContext());
+        android.widget.FrameLayout.LayoutParams params = new android.widget.FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.leftMargin = 50; params.rightMargin = 50;
+        input.setLayoutParams(params);
+        container.addView(input);
+        builder.setView(container);
+
+        builder.setPositiveButton("Salva", (dialog, which) -> {
+            String nuovaNota = input.getText().toString().trim();
+            prefs.edit().putString("note_auto", nuovaNota).apply();
+            Toast.makeText(requireContext(), "Nota aggiornata ✅", Toast.LENGTH_SHORT).show();
+            // Se avessi una TextView che mostra la nota in Home, chiameresti aggiornaStatoUI() qui
+        });
+
+        builder.setNegativeButton("Annulla", null);
+        builder.show();
     }
 
     private void aggiornaStatoUI() {

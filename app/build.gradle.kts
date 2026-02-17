@@ -40,6 +40,7 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
     implementation("androidx.activity:activity:1.8.0")
+    implementation(libs.play.services.location)
 
     // 1. ROOM DATABASE (Java)
     val room_version = "2.6.1"
@@ -68,6 +69,8 @@ dependencies {
     // OSMBonusPack (Per tracciare percorsi e navigazione)
     implementation("com.github.MKergall:osmbonuspack:6.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.9.3")
+
+    implementation("com.google.android.gms:play-services-location:21.0.1")
 }
 
 // Blocco di sicurezza globale per il conflitto Jetbrains/IntelliJ

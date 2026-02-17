@@ -1,12 +1,9 @@
 package com.example.parkpin;
 
 import android.Manifest;
-import android.app.AlarmManager;
 import android.app.AlertDialog;
-import android.app.PendingIntent;
 import android.app.TimePickerDialog;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -14,18 +11,17 @@ import android.graphics.drawable.Drawable;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
-import android.location.LocationListener; // IMPORTANTE
+import android.location.LocationListener;
 import android.location.LocationManager;
-import android.os.Build;
 import android.os.Bundle;
-import android.util.Log; // IMPORTANTE PER I LOG
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -60,7 +56,7 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
-public class SaveCarFragment extends Fragment implements LocationListener { // AGGIUNTO LocationListener
+public class SaveCarFragment extends Fragment implements LocationListener {
 
     public interface OverpassService {
         @GET("interpreter")
@@ -80,7 +76,8 @@ public class SaveCarFragment extends Fragment implements LocationListener { // A
     private Marker markerPosizioneAuto;
     private double latSelezionata = 0;
     private double lonSelezionata = 0;
-    private LocationManager locationManager; // Per gestire il GPS
+    private LocationManager locationManager;
+    private boolean isPosizioneInizialeImpostata = false;
 
     private List<Marker> parcheggiMarkers = new ArrayList<>();
 
@@ -100,10 +97,13 @@ public class SaveCarFragment extends Fragment implements LocationListener { // A
         txtIndirizzo = view.findViewById(R.id.txt_indirizzo_dinamico);
         etNote = view.findViewById(R.id.et_note_save);
         txtTimerStatus = view.findViewById(R.id.txt_timer_status_save);
+
+        // I 4 ELEMENTI CRITICI
         loadingContainer = view.findViewById(R.id.loading_container);
         layoutError = view.findViewById(R.id.layout_error_retry);
-        txtErrorMsg = view.findViewById(R.id.txt_error_msg);
-        btnRetry = view.findViewById(R.id.btn_retry);
+        txtErrorMsg = view.findViewById(R.id.txt_error_msg); // Ora esiste nell'XML
+        btnRetry = view.findViewById(R.id.btn_retry);       // Ora esiste nell'XML
+
 
         // MAPPA
         map.setTileSource(TileSourceFactory.MAPNIK);
@@ -111,7 +111,7 @@ public class SaveCarFragment extends Fragment implements LocationListener { // A
         map.setBuiltInZoomControls(false);
         map.getController().setZoom(19.0);
 
-        // MARKER
+        // MARKER POSIZIONE AUTO
         markerPosizioneAuto = new Marker(map);
         markerPosizioneAuto.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
         markerPosizioneAuto.setIcon(ContextCompat.getDrawable(requireContext(), R.drawable.baseline_directions_car_24));
@@ -127,7 +127,7 @@ public class SaveCarFragment extends Fragment implements LocationListener { // A
         });
         map.getOverlays().add(markerPosizioneAuto);
 
-        // OVERLAY
+        // OVERLAY TOCCO MAPPA
         Overlay touchOverlay = new Overlay() {
             @Override
             public boolean onDoubleTap(MotionEvent e, MapView mapView) {
@@ -143,31 +143,82 @@ public class SaveCarFragment extends Fragment implements LocationListener { // A
         view.findViewById(R.id.btn_zoom_in).setOnClickListener(v -> map.getController().zoomIn());
         view.findViewById(R.id.btn_zoom_out).setOnClickListener(v -> map.getController().zoomOut());
 
-        // LOGICA AVVIO
+        // LOGICA AVVIO PULITA E UNICA
         if (getArguments() != null && getArguments().containsKey("lat_arrivo")) {
             double lat = getArguments().getFloat("lat_arrivo");
             double lon = getArguments().getFloat("lon_arrivo");
             boolean isPaid = getArguments().getBoolean("is_paid", false);
 
             GeoPoint p = new GeoPoint(lat, lon);
+            isPosizioneInizialeImpostata = true;
+
             aggiornaPosizioneScelta(p);
             map.getController().setCenter(p);
 
-            if (isPaid) mostraDialogTimer();
+            // APRE LA NOTA
+            mostraDialogNota(isPaid);
             caricaParcheggiVicini(lat, lon);
         } else {
-            // Se non arrivo dalla navigazione, cerco la mia posizione
+            isPosizioneInizialeImpostata = false;
             cercaPosizioneGPSIniziale();
         }
 
         // LISTENERS
-        view.findViewById(R.id.fab_my_pos_save).setOnClickListener(v -> cercaPosizioneGPSIniziale());
+        view.findViewById(R.id.fab_my_pos_save).setOnClickListener(v -> {
+            isPosizioneInizialeImpostata = false;
+            cercaPosizioneGPSIniziale();
+        });
+
         view.findViewById(R.id.btn_timer_save).setOnClickListener(v -> mostraDialogTimer());
         view.findViewById(R.id.btn_confirm_save).setOnClickListener(v -> salvaPosizioneDefinitiva());
 
         btnRetry.setOnClickListener(v -> caricaParcheggiVicini(latSelezionata, lonSelezionata));
 
         view.findViewById(R.id.btn_back_home).setOnClickListener(v -> NavHostFragment.findNavController(this).popBackStack());
+    }
+
+    // NUOVO METODO: Gestione del Dialog per la Nota
+    private void mostraDialogNota(boolean isPaid) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Nota Parcheggio");
+        builder.setMessage("Aggiungi una nota opzionale per trovare l'auto più facilmente (es. Piano -1, Settore Blu).");
+
+        LinearLayout layout = new LinearLayout(requireContext());
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(50, 40, 50, 10);
+
+        final EditText inputNota = new EditText(requireContext());
+        inputNota.setHint("Inserisci nota qui...");
+        layout.addView(inputNota);
+
+        builder.setView(layout);
+
+        builder.setPositiveButton("Salva Nota", (dialog, which) -> {
+            String notaInserita = inputNota.getText().toString().trim();
+            if (!notaInserita.isEmpty()) {
+                // Uniamo la nuova nota ad un eventuale testo già presente (es. "(A Pagamento)")
+                String notaAttuale = etNote.getText().toString().trim();
+                if (!notaAttuale.isEmpty()) {
+                    etNote.setText(notaAttuale + " - " + notaInserita);
+                } else {
+                    etNote.setText(notaInserita);
+                }
+            }
+            // Dopo aver salvato la nota, se è a pagamento, mostra il timer
+            if (isPaid) {
+                mostraDialogTimer();
+            }
+        });
+
+        builder.setNegativeButton("Salta", (dialog, which) -> {
+            // Se salta la nota ma è a pagamento, mostra comunque il timer
+            if (isPaid) {
+                mostraDialogTimer();
+            }
+        });
+
+        builder.setCancelable(false); // Obbliga l'utente a interagire con i pulsanti
+        builder.show();
     }
 
     private void aggiornaPosizioneScelta(GeoPoint p) {
@@ -194,7 +245,6 @@ public class SaveCarFragment extends Fragment implements LocationListener { // A
         }).start();
     }
 
-    // --- LOGICA POSIZIONE CORRETTA ---
     private void cercaPosizioneGPSIniziale() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return;
 
@@ -204,14 +254,12 @@ public class SaveCarFragment extends Fragment implements LocationListener { // A
         if(loc == null) try { loc = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER); } catch(Exception e){}
 
         if (loc != null) {
-            // Posizione trovata subito!
             Log.d("PARKPIN_DEBUG", "Posizione trovata subito: " + loc.getLatitude());
             usarePosizioneTrovata(loc);
         } else {
-            // Posizione non trovata (GPS Freddo). Chiediamo aggiornamento!
             Log.d("PARKPIN_DEBUG", "GPS Freddo. Richiedo aggiornamento...");
             Toast.makeText(requireContext(), "Cerco segnale GPS...", Toast.LENGTH_SHORT).show();
-            loadingContainer.setVisibility(View.VISIBLE); // Mostra caricamento mentre cerca GPS
+            loadingContainer.setVisibility(View.VISIBLE);
             try {
                 locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
                 locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, this);
@@ -222,81 +270,85 @@ public class SaveCarFragment extends Fragment implements LocationListener { // A
     @Override
     public void onLocationChanged(@NonNull Location location) {
         Log.d("PARKPIN_DEBUG", "Posizione aggiornata dal Listener!");
-        if (locationManager != null) locationManager.removeUpdates(this); // Ferma GPS
-        usarePosizioneTrovata(location);
+
+        if (locationManager != null) locationManager.removeUpdates(this);
+
+        if (!isPosizioneInizialeImpostata) {
+            usarePosizioneTrovata(location);
+        }
     }
 
     private void usarePosizioneTrovata(Location loc) {
         GeoPoint myPos = new GeoPoint(loc.getLatitude(), loc.getLongitude());
         map.getController().animateTo(myPos);
         aggiornaPosizioneScelta(myPos);
+
+        isPosizioneInizialeImpostata = true;
+
+        // Chiama la ricerca: sarà lei a gestire il caricamento
         caricaParcheggiVicini(loc.getLatitude(), loc.getLongitude());
     }
 
-    // --- CARICAMENTO CON CAMBIO SERVER E LOG ---
+    // --- CARICAMENTO CON POPUP STILE SEARCH FRAGMENT ---
+    // --- CARICAMENTO CON POPUP STILE SEARCH FRAGMENT ---
     private void caricaParcheggiVicini(double lat, double lon) {
+        // START: Mostra il popup e nascondi errori
         loadingContainer.setVisibility(View.VISIBLE);
         layoutError.setVisibility(View.GONE);
 
-        Log.d("PARKPIN_DEBUG", "🚀 Inizio download parcheggi da: " + lat + ", " + lon);
+        Log.d("PARKPIN_DEBUG", "🚀 Inizio ricerca parcheggi...");
 
-        // Controllo Cache
+        // Gestione Cache (uguale a checkDatiEVisualizza di Search)
         if (ParkingCache.parcheggiSalvati != null && !ParkingCache.parcheggiSalvati.isEmpty()) {
-            // Controllo distanza (opzionale, qui semplice)
-            loadingContainer.setVisibility(View.GONE);
+            loadingContainer.setVisibility(View.GONE); // Qui ha senso spegnere perché i dati sono istantanei
             disegnaParcheggiSullaMappa(ParkingCache.parcheggiSalvati);
-            Log.d("PARKPIN_DEBUG", "♻️ Dati dalla Cache.");
             return;
         }
 
+        // Ricerca via Retrofit
         OkHttpClient client = new OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .addInterceptor(chain -> chain.proceed(chain.request().newBuilder().header("User-Agent", "ParkPinApp/1.0").build()))
+                .connectTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
                 .build();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("https://overpass-api.de/api/") // <--- SERVER PRINCIPALE (Più affidabile)
+                .baseUrl("https://overpass.kumi.systems/api/")
                 .client(client)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
 
-        String query = "[out:json][timeout:25];" +
+        String query = "[out:json][timeout:60];" +
                 "nwr[\"amenity\"=\"parking\"](around:2000," + lat + "," + lon + ");" +
                 "out tags center;";
 
         retrofit.create(OverpassService.class).cercaParcheggi(query).enqueue(new retrofit2.Callback<OverpassResponse>() {
             @Override
             public void onResponse(Call<OverpassResponse> call, Response<OverpassResponse> response) {
+                // FINISH: Nascondi il caricamento solo qui
                 loadingContainer.setVisibility(View.GONE);
-                if (!isAdded() || map == null || map.getRepository() == null) {
-                    return; // L'utente è uscito, fermiamo tutto!
-                }
+
                 if (response.isSuccessful() && response.body() != null) {
                     List<OverpassResponse.Elemento> risultati = response.body().elementi;
-                    if (risultati == null || risultati.isEmpty()) {
-                        layoutError.setVisibility(View.VISIBLE);
-                        txtErrorMsg.setText("Nessun parcheggio qui vicino.");
-                        Log.d("PARKPIN_DEBUG", "⚠️ Download OK ma 0 parcheggi.");
-                    } else {
+                    if (risultati != null && !risultati.isEmpty()) {
                         ParkingCache.parcheggiSalvati = risultati;
                         ParkingCache.posizioneSalvataggio = new GeoPoint(lat, lon);
                         disegnaParcheggiSullaMappa(risultati);
-                        Log.d("PARKPIN_DEBUG", "✅ SUCCESSO: " + risultati.size() + " parcheggi.");
+                    } else {
+                        layoutError.setVisibility(View.VISIBLE);
+                        txtErrorMsg.setText("Nessun parcheggio trovato.");
                     }
                 } else {
                     layoutError.setVisibility(View.VISIBLE);
                     txtErrorMsg.setText("Errore Server: " + response.code());
-                    Log.e("PARKPIN_DEBUG", "❌ Errore Server: " + response.code());
                 }
             }
 
             @Override
             public void onFailure(Call<OverpassResponse> call, Throwable t) {
+                // FINISH: Nascondi il caricamento in caso di fallimento
                 loadingContainer.setVisibility(View.GONE);
                 layoutError.setVisibility(View.VISIBLE);
                 txtErrorMsg.setText("Errore di connessione.");
-                Log.e("PARKPIN_DEBUG", "❌ FALLITO: " + t.getMessage());
             }
         });
     }
@@ -304,9 +356,7 @@ public class SaveCarFragment extends Fragment implements LocationListener { // A
     private void disegnaParcheggiSullaMappa(List<OverpassResponse.Elemento> lista) {
         if (lista == null || map == null) return;
 
-        for (Marker m : parcheggiMarkers) {
-            map.getOverlays().remove(m);
-        }
+        for (Marker m : parcheggiMarkers) map.getOverlays().remove(m);
         parcheggiMarkers.clear();
 
         int iconResId = R.drawable.baseline_local_parking_24;
@@ -350,7 +400,13 @@ public class SaveCarFragment extends Fragment implements LocationListener { // A
                             aggiornaPosizioneScelta(posParcheggio);
                             map.getController().animateTo(posParcheggio);
                             Toast.makeText(requireContext(), "Posizione aggiornata!", Toast.LENGTH_SHORT).show();
-                            if (finalIsPagamento) etNote.setText(etNote.getText() + " (A Pagamento)");
+
+                            if (finalIsPagamento) etNote.setText("(A Pagamento)");
+                            else etNote.setText("");
+
+                            // ---> MODIFICA: Richiamiamo il flusso nota -> timer
+                            mostraDialogNota(finalIsPagamento);
+                            // <---
                         })
                         .setNegativeButton("No", null).show();
                 return true;
@@ -368,8 +424,10 @@ public class SaveCarFragment extends Fragment implements LocationListener { // A
             return;
         }
         SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
-        prefs.edit().putBoolean("auto_salvata", true).putFloat("car_lat", (float) latSelezionata)
-                .putFloat("car_lon", (float) lonSelezionata).putString("note_auto", etNote.getText().toString())
+        prefs.edit().putBoolean("auto_salvata", true)
+                .putFloat("car_lat", (float) latSelezionata)
+                .putFloat("car_lon", (float) lonSelezionata)
+                .putString("note_auto", etNote.getText().toString())
                 .putBoolean("navigazione_attiva", false).apply();
         Toast.makeText(requireContext(), "✅ Posizione Salvata!", Toast.LENGTH_SHORT).show();
         NavHostFragment.findNavController(this).navigate(R.id.action_save_to_home);
@@ -381,11 +439,8 @@ public class SaveCarFragment extends Fragment implements LocationListener { // A
                 now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE), true).show();
     }
 
-    // Sostituisci il vecchio metodo schedulaNotifica con questo richiamo rapido:
     private void schedulaNotifica(int oraScadenza, int minutiScadenza) {
         NotificationHelper.prenotaAvviso(requireContext(), oraScadenza, minutiScadenza);
-
-        // Aggiorna solo la parte grafica del fragment
         String orario = String.format("%02d:%02d", oraScadenza, minutiScadenza);
         txtTimerStatus.setText("Scadenza: " + orario);
     }

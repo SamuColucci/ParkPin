@@ -475,13 +475,18 @@ public class SearchFragment extends Fragment implements LocationListener {
         bundle.putFloat("dest_lon", (float) dest.getLongitude());
         bundle.putString("dest_nome", nome);
         bundle.putBoolean("dest_is_paid", isPaid);
+
         requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE).edit()
                 .putBoolean("navigazione_attiva", true)
                 .putFloat("dest_lat", (float) dest.getLatitude())
                 .putFloat("dest_lon", (float) dest.getLongitude())
-                .putString("dest_nome", nome).apply();
+                .putString("dest_nome", nome)
+                // Rimosso .putString("dest_nota", nota)
+                .apply();
+
         NavHostFragment.findNavController(this).navigate(R.id.action_search_to_nav, bundle);
     }
+
 
     // --- ADAPTER AGGIORNATO CON STRADA ---
     private static class ParcheggioAdapter extends RecyclerView.Adapter<ParcheggioAdapter.ViewHolder> {
