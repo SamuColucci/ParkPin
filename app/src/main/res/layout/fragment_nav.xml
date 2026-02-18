@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F5F5">
+    android:background="#212121">
 
     <com.google.android.material.progressindicator.LinearProgressIndicator
         android:id="@+id/progress_loader_nav"
@@ -11,7 +11,7 @@
         android:layout_height="wrap_content"
         android:indeterminate="true"
         android:visibility="gone"
-        app:indicatorColor="#2196F3"
+        app:indicatorColor="#FFC107"
         app:trackThickness="4dp"
         app:trackCornerRadius="2dp" />
 
@@ -25,20 +25,21 @@
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
         android:layout_alignParentTop="true"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="6dp"
-        app:cardBackgroundColor="#2962FF">
+        app:cardCornerRadius="16dp"
+        app:cardElevation="8dp"
+        app:cardBackgroundColor="#212121">
 
         <TextView
             android:id="@+id/txt_nav_istruzione"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Segui il percorso blu ➔"
-            android:textColor="#FFFFFF"
+            android:text="Segui il percorso ➔"
+            android:textColor="#FFC107"
             android:textSize="18sp"
             android:textStyle="bold"
             android:padding="16dp"
-            android:gravity="center"/>
+            android:gravity="center"
+            android:fontFamily="sans-serif-black"/>
     </androidx.cardview.widget.CardView>
 
     <androidx.cardview.widget.CardView
@@ -47,9 +48,9 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_margin="16dp"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="10dp"
-        app:cardBackgroundColor="#FFFFFF">
+        app:cardCornerRadius="24dp"
+        app:cardElevation="12dp"
+        app:cardBackgroundColor="#212121">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -65,10 +66,10 @@
                 android:layout_marginBottom="12dp">
 
                 <ImageView
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
                     android:src="@drawable/baseline_local_parking_24"
-                    app:tint="#D32F2F"
+                    app:tint="#FFC107"
                     android:layout_marginEnd="12dp"/>
 
                 <LinearLayout
@@ -82,7 +83,7 @@
                         android:layout_height="wrap_content"
                         android:text="Destinazione"
                         android:textSize="12sp"
-                        android:textColor="#757575"/>
+                        android:textColor="#BDBDBD"/>
 
                     <TextView
                         android:id="@+id/txt_nav_destinazione"
@@ -91,15 +92,16 @@
                         android:text="Caricamento..."
                         android:textSize="20sp"
                         android:textStyle="bold"
-                        android:textColor="#263238"
+                        android:textColor="#FFFFFF"
                         android:maxLines="2"
                         android:ellipsize="end"/>
+
                     <TextView
                         android:id="@+id/txt_nav_nota"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textSize="14sp"
-                        android:textColor="#666666"
+                        android:textColor="#FFC107"
                         android:textStyle="bold"
                         android:visibility="gone" />
                 </LinearLayout>
@@ -109,7 +111,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:background="#F1F8E9"
+                android:background="#2C2C2C"
                 android:padding="12dp"
                 android:layout_marginBottom="16dp">
 
@@ -121,13 +123,13 @@
                     android:text="-- km"
                     android:textSize="22sp"
                     android:textStyle="bold"
-                    android:textColor="#2E7D32"
+                    android:textColor="#81C784"
                     android:gravity="center"/>
 
                 <View
                     android:layout_width="1dp"
                     android:layout_height="40dp"
-                    android:background="#BDBDBD"/>
+                    android:background="#424242"/>
 
                 <TextView
                     android:id="@+id/txt_nav_tempo"
@@ -137,7 +139,7 @@
                     android:text="-- min"
                     android:textSize="22sp"
                     android:textStyle="bold"
-                    android:textColor="#455A64"
+                    android:textColor="#FFFFFF"
                     android:gravity="center"/>
             </LinearLayout>
 
@@ -149,23 +151,25 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_stop_navigazione"
                     android:layout_width="0dp"
-                    android:layout_height="55dp"
+                    android:layout_height="56dp"
                     android:layout_weight="1"
                     android:text="Termina"
-                    android:textColor="#D32F2F"
+                    android:textColor="#FF5252"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    app:strokeColor="#D32F2F"
+                    app:strokeColor="#FF5252"
+                    app:cornerRadius="16dp"
                     android:layout_marginEnd="8dp"/>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_nav_google_maps"
                     android:layout_width="0dp"
-                    android:layout_height="55dp"
-                    android:layout_weight="1"
-                    android:text="Maps 🗺️"
-                    android:textColor="#FFFFFF"
-                    app:backgroundTint="#4285F4"
-                    app:cornerRadius="8dp"/>
+                    android:layout_height="56dp"
+                    android:layout_weight="1.2"
+                    android:text="Google Maps 🗺️"
+                    android:textColor="#212121"
+                    android:textStyle="bold"
+                    app:backgroundTint="#FFC107"
+                    app:cornerRadius="16dp"/>
             </LinearLayout>
         </LinearLayout>
     </androidx.cardview.widget.CardView>
@@ -180,16 +184,17 @@
         android:layout_marginBottom="16dp"
         android:src="@android:drawable/ic_menu_mylocation"
         app:backgroundTint="#FFFFFF"
-        app:tint="#2962FF"/>
+        app:tint="#212121"
+        app:elevation="8dp"/>
+
     <LinearLayout
         android:id="@+id/loading_container"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
         android:layout_centerInParent="true"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="20dp"
+        android:padding="24dp"
         android:background="@drawable/bg_rounded_white"
         android:visibility="gone"
         android:elevation="30dp">
@@ -197,34 +202,32 @@
         <ProgressBar
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:indeterminateTint="#2962FF"/>
+            android:indeterminateTint="#FFC107"/>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Calcolo percorso in corso..."
-            android:textColor="#546E7A"
-            android:textSize="12sp"
+            android:text="Calcolo percorso..."
+            android:textColor="#212121"
             android:textStyle="bold"
-            android:layout_marginTop="8dp"/>
+            android:layout_marginTop="12dp"/>
     </LinearLayout>
 
     <LinearLayout
         android:id="@+id/layout_error_retry"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
         android:layout_centerInParent="true"
         android:orientation="vertical"
         android:gravity="center"
         android:background="@drawable/bg_rounded_white"
-        android:padding="20dp"
+        android:padding="24dp"
         android:visibility="gone"
         android:elevation="30dp">
 
         <ImageView
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:src="@android:drawable/ic_dialog_alert"
             app:tint="#D32F2F"/>
 
@@ -232,10 +235,11 @@
             android:id="@+id/txt_error_msg"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Impossibile calcolare il percorso"
+            android:text="Errore calcolo percorso"
             android:textColor="#D32F2F"
+            android:textStyle="bold"
             android:gravity="center"
-            android:layout_marginTop="8dp"/>
+            android:layout_marginTop="12dp"/>
     </LinearLayout>
 
 </RelativeLayout>

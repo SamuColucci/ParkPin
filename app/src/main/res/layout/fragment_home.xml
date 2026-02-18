@@ -1,299 +1,422 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F5F5"
-    android:padding="24dp">
+    android:background="#212121"
+    android:fillViewport="true"
+    android:overScrollMode="never"
+    android:scrollbars="none">
 
     <LinearLayout
-        android:id="@+id/container_center"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:gravity="center"
-        android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="40dp">
-
-        <androidx.cardview.widget.CardView
-            android:id="@+id/card_logo"
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            app:cardCornerRadius="50dp"
-            app:cardElevation="8dp"
-            app:cardBackgroundColor="#FFFFFF">
-
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:padding="1dp"
-                android:src="@drawable/logo_parkpin"/>
-        </androidx.cardview.widget.CardView>
-
-        <TextView
-            android:id="@+id/txt_titolo"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="ParkPin"
-            android:textSize="28sp"
-            android:textStyle="bold"
-            android:textColor="#37474F"
-            android:layout_marginTop="16dp"/>
-
-        <TextView
-            android:id="@+id/txt_sottotitolo"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Trova. Parcheggia. Ritrova."
-            android:textSize="14sp"
-            android:textColor="#78909C"
-            android:layout_marginTop="4dp"/>
-
-        <TextView
-            android:id="@+id/txt_home_timer_scadenza"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="⏳ Scadenza: 00:00"
-            android:textColor="#D32F2F"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:visibility="gone" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/container_buttons"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_alignParentBottom="true"
-        android:layout_marginBottom="24dp">
+        android:gravity="center_vertical"
+        android:paddingBottom="32dp"
+        android:animateLayoutChanges="true">
 
         <LinearLayout
-            android:id="@+id/layout_navigazione"
+            android:id="@+id/container_center"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:visibility="gone">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="start"
-                android:textSize="18sp"
-                android:textColor="#D50000"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
-
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="200dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="8dp"
-                android:layout_marginBottom="16dp">
-                <RelativeLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent">
-
-                    <org.osmdroid.views.MapView
-                        android:id="@+id/map_preview_nav"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"/>
-
-                </RelativeLayout>
-            </androidx.cardview.widget.CardView>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_continua_guida"
-                android:layout_width="match_parent"
-                android:layout_height="60dp"
-                android:text="Continua Guida ➔"
-                android:textSize="18sp"
-                app:cornerRadius="30dp"
-                app:backgroundTint="#00C853"/>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_stop_nav_home"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Interrompi Navigazione"
-                android:textColor="#D32F2F"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                app:icon="@android:drawable/ic_menu_close_clear_cancel"
-                app:iconTint="#D32F2F"/>
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/layout_ritorno_auto"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone">
+            android:gravity="center"
+            android:layout_marginTop="48dp"
+            android:layout_marginBottom="32dp"
+            android:paddingHorizontal="24dp">
 
             <LinearLayout
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginBottom="8dp">
+                android:gravity="center_vertical">
 
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="🚗 La tua auto è qui:"
-                    android:textSize="18sp"
-                    android:textColor="#37474F"
-                    android:textStyle="bold"/>
-
-            </LinearLayout>
-
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="200dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="8dp"
-                android:layout_marginBottom="16dp">
-                <RelativeLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent">
-
-                    <org.osmdroid.views.MapView
-                        android:id="@+id/map_preview_home"
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    app:cardBackgroundColor="#FFC107"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="6dp"
+                    app:strokeWidth="0dp">
+                    <ImageView
+                        android:id="@+id/img_logo_header"
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"/>
+                        android:layout_height="match_parent"
+                        android:padding="14dp"
+                        android:src="@drawable/logo_parkpin"
+                        android:scaleType="fitCenter"
+                        app:tint="#212121"/>
+                </com.google.android.material.card.MaterialCardView>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginStart="20dp">
 
                     <TextView
+                        android:id="@+id/txt_titolo"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Anteprima Posizione"
-                        android:background="#CCFFFFFF"
-                        android:paddingHorizontal="10dp"
-                        android:paddingVertical="4dp"
-                        android:textSize="12sp"
+                        android:text="ParkPin"
+                        android:textSize="36sp"
                         android:textStyle="bold"
-                        android:textColor="#000000"
-                        android:layout_alignParentTop="true"
-                        android:layout_alignParentStart="true"
-                        android:layout_margin="10dp"/>
+                        android:fontFamily="sans-serif-black"
+                        android:textColor="#FFC107"
+                        android:letterSpacing="-0.02"/>
 
-                </RelativeLayout>
-            </androidx.cardview.widget.CardView>
+                    <TextView
+                        android:id="@+id/txt_sottotitolo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Parcheggia sicuro."
+                        android:textSize="16sp"
+                        android:textColor="#FFC107"
+                        android:alpha="0.9"
+                        android:fontFamily="sans-serif-medium"/>
+                </LinearLayout>
+            </LinearLayout>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_ritorna_auto"
-                android:layout_width="match_parent"
-                android:layout_height="60dp"
-                android:text="PORTAMI ALL'AUTO"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                app:cornerRadius="12dp"
-                app:backgroundTint="#2962FF"
-                app:icon="@android:drawable/ic_menu_directions"
-                app:iconGravity="textStart"
-                app:elevation="4dp"/>
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_timer_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                app:cardBackgroundColor="#FFEBEE"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="0dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_elimina_auto"
+                <TextView
+                    android:id="@+id/txt_home_timer_scadenza"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="6dp"
+                    android:text="⏳ Scadenza: 00:00"
+                    android:textColor="#D32F2F"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:visibility="gone"/>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/container_buttons"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingHorizontal="20dp"
+            android:animateLayoutChanges="true">
+
+            <LinearLayout
+                android:id="@+id/layout_navigazione"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="❌ Elimina posizione"
-                android:textColor="#D32F2F"
-                style="@style/Widget.MaterialComponents.Button.TextButton"/>
+                android:orientation="vertical"
+                android:visibility="gone">
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="28dp"
+                    app:cardElevation="6dp"
+                    app:strokeWidth="0dp"
+                    app:cardBackgroundColor="#FFFFFF"
+                    android:layout_marginBottom="24dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <org.osmdroid.views.MapView
+                            android:id="@+id/map_preview_nav"
+                            android:layout_width="match_parent"
+                            android:layout_height="220dp"/>
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:padding="24dp"
+                            android:orientation="vertical"
+                            android:background="#FFFFFF">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Navigazione attiva"
+                                android:textSize="22sp"
+                                android:textStyle="bold"
+                                android:textColor="#212121"/>
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Segui le indicazioni per l'auto."
+                                android:textSize="15sp"
+                                android:textColor="#616161"
+                                android:layout_marginBottom="24dp"
+                                android:layout_marginTop="4dp"/>
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_continua_guida"
+                                android:layout_width="match_parent"
+                                android:layout_height="64dp"
+                                android:text="RIPRENDI PERCORSO"
+                                android:textAllCaps="true"
+                                android:textSize="16sp"
+                                android:textStyle="bold"
+                                android:textColor="#FFC107"
+                                app:cornerRadius="16dp"
+                                app:backgroundTint="#212121"
+                                app:icon="@android:drawable/ic_menu_directions"
+                                app:iconTint="#FFC107"
+                                app:iconGravity="textStart"
+                                app:elevation="4dp"/>
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_stop_nav_home"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:text="Annulla Navigazione"
+                                android:textAllCaps="false"
+                                android:textColor="#D32F2F"
+                                style="@style/Widget.MaterialComponents.Button.TextButton"/>
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_edit_note"
+            <LinearLayout
+                android:id="@+id/layout_ritorno_auto"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Modifica nota posizione"
-                android:textColor="#37474F"
-                app:icon="@android:drawable/ic_menu_edit"
-                app:iconTint="#37474F"
-                style="@style/Widget.MaterialComponents.Button.TextButton"/>
+                android:orientation="vertical"
+                android:visibility="gone">
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="28dp"
+                    app:cardElevation="6dp"
+                    app:strokeWidth="0dp"
+                    app:cardBackgroundColor="#FFFFFF"
+                    android:layout_marginBottom="24dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <FrameLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="220dp">
+                            <org.osmdroid.views.MapView
+                                android:id="@+id/map_preview_home"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"/>
+                            <com.google.android.material.card.MaterialCardView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_margin="16dp"
+                                app:cardBackgroundColor="#FFC107"
+                                app:cardCornerRadius="8dp"
+                                app:cardElevation="4dp">
+                                <LinearLayout
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="horizontal"
+                                    android:paddingHorizontal="12dp"
+                                    android:paddingVertical="8dp"
+                                    android:gravity="center_vertical">
+                                    <ImageView
+                                        android:layout_width="18dp"
+                                        android:layout_height="18dp"
+                                        android:src="@android:drawable/ic_menu_myplaces"
+                                        app:tint="#212121"/>
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="La tua auto"
+                                        android:layout_marginStart="8dp"
+                                        android:textSize="14sp"
+                                        android:textStyle="bold"
+                                        android:textColor="#212121"/>
+                                </LinearLayout>
+                            </com.google.android.material.card.MaterialCardView>
+                        </FrameLayout>
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:padding="24dp"
+                            android:orientation="vertical"
+                            android:background="#FFFFFF">
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_ritorna_auto"
+                                android:layout_width="match_parent"
+                                android:layout_height="64dp"
+                                android:text="RAGGIUNGI L'AUTO"
+                                android:textAllCaps="true"
+                                android:textSize="16sp"
+                                android:textStyle="bold"
+                                android:textColor="#FFC107"
+                                app:cornerRadius="16dp"
+                                app:backgroundTint="#212121"
+                                app:icon="@android:drawable/ic_menu_directions"
+                                app:iconTint="#FFC107"
+                                app:elevation="4dp"/>
+                            <GridLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="16dp"
+                                android:columnCount="2"
+                                android:rowCount="2"
+                                android:alignmentMode="alignMargins">
+                                <com.google.android.material.button.MaterialButton
+                                    android:id="@+id/btn_share_location"
+                                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_columnWeight="1"
+                                    android:layout_marginEnd="8dp"
+                                    android:text="Condividi"
+                                    android:textAllCaps="false"
+                                    android:textColor="#212121"
+                                    app:strokeColor="#BDBDBD"
+                                    app:icon="@android:drawable/ic_menu_share"
+                                    app:iconTint="#212121"
+                                    app:cornerRadius="12dp"/>
+                                <com.google.android.material.button.MaterialButton
+                                    android:id="@+id/btn_edit_note"
+                                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_columnWeight="1"
+                                    android:layout_marginStart="8dp"
+                                    android:text="Nota"
+                                    android:textAllCaps="false"
+                                    android:textColor="#212121"
+                                    app:strokeColor="#BDBDBD"
+                                    app:icon="@android:drawable/ic_menu_edit"
+                                    app:iconTint="#212121"
+                                    app:cornerRadius="12dp"/>
+                                <com.google.android.material.button.MaterialButton
+                                    android:id="@+id/btn_elimina_auto"
+                                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_columnSpan="2"
+                                    android:layout_marginTop="8dp"
+                                    android:text="Elimina posizione"
+                                    android:textAllCaps="false"
+                                    android:textColor="#D32F2F"/>
+                            </GridLayout>
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_share_location"
+            <LinearLayout
+                android:id="@+id/layout_normal"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Condividi posizione"
-                android:textColor="#2962FF"
-                app:icon="@android:drawable/ic_menu_share"
-                app:iconTint="#2962FF"
-                style="@style/Widget.MaterialComponents.Button.TextButton"/>
+                android:orientation="vertical"
+                android:visibility="visible">
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="28dp"
+                    app:cardElevation="6dp"
+                    app:strokeWidth="0dp"
+                    app:cardBackgroundColor="#FFFFFF"
+                    android:layout_marginBottom="24dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <org.osmdroid.views.MapView
+                            android:id="@+id/map_preview_current"
+                            android:layout_width="match_parent"
+                            android:layout_height="220dp"/>
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:padding="28dp"
+                            android:orientation="vertical">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Benvenuto"
+                                android:textSize="22sp"
+                                android:textStyle="bold"
+                                android:textColor="#212121"
+                                android:layout_gravity="center"/>
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Trova parcheggio o salva la posizione."
+                                android:textSize="15sp"
+                                android:textColor="#616161"
+                                android:layout_gravity="center"
+                                android:layout_marginTop="4dp"
+                                android:layout_marginBottom="28dp"/>
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_mappa"
+                                android:layout_width="match_parent"
+                                android:layout_height="64dp"
+                                android:text="CERCA PARCHEGGIO"
+                                android:textAllCaps="true"
+                                android:textSize="16sp"
+                                android:textStyle="bold"
+                                android:textColor="#FFC107"
+                                app:cornerRadius="16dp"
+                                app:backgroundTint="#212121"
+                                app:icon="@android:drawable/ic_menu_search"
+                                app:iconTint="#FFC107"
+                                android:layout_marginBottom="12dp"
+                                app:elevation="4dp"/>
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_salva_posizione"
+                                android:layout_width="match_parent"
+                                android:layout_height="64dp"
+                                android:text="Salva Posizione Qui"
+                                android:textAllCaps="false"
+                                android:textSize="16sp"
+                                android:textStyle="bold"
+                                android:textColor="#212121"
+                                app:cornerRadius="16dp"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                app:strokeColor="#212121"
+                                app:strokeWidth="1dp"/>
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
 
         </LinearLayout>
 
         <LinearLayout
-            android:id="@+id/layout_normal"
+            android:id="@+id/layout_footer_info"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:visibility="visible">
+            android:gravity="center"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="32dp"
+            android:paddingHorizontal="40dp">
 
-            <TextView
-                android:layout_width="match_parent"
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_info_app"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Nessuna auto salvata al momento."
-                android:textColor="#546E7A"
-                android:gravity="center"
-                android:layout_marginBottom="16dp"/>
+                android:text="Info &amp; Stato"
+                android:textSize="11sp"
+                android:textColor="#757575"
+                app:strokeColor="#424242"
+                app:strokeWidth="1dp"
+                app:cornerRadius="20dp"
+                app:icon="@android:drawable/ic_menu_info_details"
+                app:iconTint="#757575"
+                app:iconSize="14dp"
+                android:minHeight="0dp"
+                android:paddingVertical="8dp"
+                android:paddingHorizontal="18dp"/>
 
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="180dp"
-                android:layout_marginBottom="24dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp">
-
-                <RelativeLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent">
-
-                    <org.osmdroid.views.MapView
-                        android:id="@+id/map_preview_current"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Tu sei qui 📍"
-                        android:background="#CCFFFFFF"
-                        android:padding="6dp"
-                        android:textColor="#2962FF"
-                        android:textStyle="bold"
-                        android:layout_alignParentTop="true"
-                        android:layout_centerHorizontal="true"
-                        android:layout_marginTop="8dp"/>
-                </RelativeLayout>
-            </androidx.cardview.widget.CardView>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_mappa"
-                android:layout_width="match_parent"
-                android:layout_height="60dp"
-                android:text="Cerca Parcheggio 🔍"
-                android:textSize="16sp"
-                app:cornerRadius="30dp"
-                app:backgroundTint="#2962FF"
-                android:layout_marginBottom="16dp"/>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_salva_posizione"
-                android:layout_width="match_parent"
-                android:layout_height="60dp"
-                android:text="Salva Posizione Qui 📍"
-                android:textSize="16sp"
-                android:textColor="#263238"
-                app:cornerRadius="30dp"
-                app:backgroundTint="#FFFFFF"
-                app:strokeColor="#CFD8DC"
-                app:strokeWidth="2dp"/>
         </LinearLayout>
-
     </LinearLayout>
-</RelativeLayout>
+</androidx.core.widget.NestedScrollView>

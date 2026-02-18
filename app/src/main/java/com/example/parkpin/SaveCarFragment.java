@@ -24,6 +24,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.TimePicker;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -175,6 +176,19 @@ public class SaveCarFragment extends Fragment implements LocationListener {
         btnRetry.setOnClickListener(v -> caricaParcheggiVicini(latSelezionata, lonSelezionata));
 
         view.findViewById(R.id.btn_back_home).setOnClickListener(v -> NavHostFragment.findNavController(this).popBackStack());
+
+        // Trova la card e attiva il BottomSheetBehavior
+
+        // Trova il Bottom Sheet
+        View bottomSheet = view.findViewById(R.id.card_bottom_save);
+        com.google.android.material.bottomsheet.BottomSheetBehavior<View> behavior =
+                com.google.android.material.bottomsheet.BottomSheetBehavior.from(bottomSheet);
+
+// Configurazione comportamento
+        behavior.setHideable(false); // Non si può nascondere del tutto
+        behavior.setPeekHeight(450); // Altezza minima se l'utente la abbassa
+// Forza l'apertura totale all'avvio
+        behavior.setState(com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED);
     }
 
     // NUOVO METODO: Gestione del Dialog per la Nota
@@ -355,6 +369,9 @@ public class SaveCarFragment extends Fragment implements LocationListener {
 
     private void disegnaParcheggiSullaMappa(List<OverpassResponse.Elemento> lista) {
         if (lista == null || map == null) return;
+        if (getContext() == null || map.getRepository() == null) {
+            return;
+        }
 
         for (Marker m : parcheggiMarkers) map.getOverlays().remove(m);
         parcheggiMarkers.clear();
@@ -434,9 +451,45 @@ public class SaveCarFragment extends Fragment implements LocationListener {
     }
 
     private void mostraDialogTimer() {
-        Calendar now = Calendar.getInstance();
-        new TimePickerDialog(requireContext(), (view, hourOfDay, minute) -> schedulaNotifica(hourOfDay, minute),
-                now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE), true).show();
+        // 1. Infla il layout
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_timer_custom, null);
+
+        // Trova il TimePicker
+        TimePicker tp = dialogView.findViewById(R.id.custom_time_picker);
+        tp.setIs24HourView(true);
+        tp.getChildAt(0).setBackgroundColor(Color.TRANSPARENT);
+
+        // 2. Crea il Dialog
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
+                .setView(dialogView)
+                .create();
+
+        // 3. Sfondo trasparente (essenziale per vedere gli angoli tondi della Card)
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+
+        // 4. Gestione bottoni con colori forzati via codice
+        com.google.android.material.button.MaterialButton btnAnnulla = dialogView.findViewById(R.id.btn_annulla_timer);
+        com.google.android.material.button.MaterialButton btnConferma = dialogView.findViewById(R.id.btn_conferma_timer);
+
+        btnAnnulla.setOnClickListener(v -> dialog.dismiss());
+
+        btnConferma.setOnClickListener(v -> {
+            int hour, minute;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                hour = tp.getHour();
+                minute = tp.getMinute();
+            } else {
+                hour = tp.getCurrentHour();
+                minute = tp.getCurrentMinute();
+            }
+
+            schedulaNotifica(hour, minute);
+            dialog.dismiss();
+        });
+
+        dialog.show();
     }
 
     private void schedulaNotifica(int oraScadenza, int minutiScadenza) {

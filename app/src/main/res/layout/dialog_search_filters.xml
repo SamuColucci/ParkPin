@@ -1,80 +1,103 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="24dp"
-    android:background="#FFFFFF">
+    app:cardBackgroundColor="#212121"
+    app:cardCornerRadius="28dp"
+    app:cardElevation="8dp"
+    android:layout_margin="16dp">
 
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Filtra Parcheggi"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:textColor="#263238"
-        android:layout_marginBottom="16dp"/>
+        android:orientation="vertical"
+        android:padding="24dp">
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Cerca Nome o Via (es. Garibaldi)"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        android:layout_marginBottom="16dp">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/et_filtro_nome"
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="text"/>
-    </com.google.android.material.textfield.TextInputLayout>
+            android:text="Filtra Parcheggi"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#FFC107"
+            android:layout_marginBottom="20dp"
+            android:fontFamily="sans-serif-black"/>
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Tipologia:"
-        android:textSize="14sp"
-        android:textColor="#546E7A"
-        android:layout_marginBottom="8dp"/>
-
-    <RadioGroup
-        android:id="@+id/rg_costo"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="24dp">
-
-        <RadioButton
-            android:id="@+id/rb_tutti"
-            android:layout_width="wrap_content"
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Tutti"
-            android:checked="true"
-            android:layout_marginEnd="12dp"/>
+            android:hint="Cerca Nome o Via (es. Garibaldi)"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_marginBottom="20dp"
+            android:textColorHint="#FFFFFF"
+            app:hintTextColor="#FFFFFF"
+            app:boxStrokeColor="#FFC107"
+            app:boxStrokeWidthFocused="2dp">
 
-        <RadioButton
-            android:id="@+id/rb_gratis"
-            android:layout_width="wrap_content"
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_filtro_nome"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="text"
+                android:textColor="#FFFFFF" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Gratis"
-            android:textColor="#388E3C"
-            android:layout_marginEnd="12dp"/>
+            android:text="Tipologia:"
+            android:textSize="14sp"
+            android:textColor="#BDBDBD"
+            android:layout_marginBottom="12dp"
+            android:textStyle="bold"/>
 
-        <RadioButton
-            android:id="@+id/rb_pagamento"
-            android:layout_width="wrap_content"
+        <RadioGroup
+            android:id="@+id/rg_costo"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Pagamento"
-            android:textColor="#D32F2F"/>
-    </RadioGroup>
+            android:orientation="horizontal"
+            android:layout_marginBottom="28dp">
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_applica_filtri"
-        android:layout_width="match_parent"
-        android:layout_height="55dp"
-        android:text="CERCA ORA 🔍"
-        app:cornerRadius="12dp"
-        app:backgroundTint="#2962FF"/>
+            <RadioButton
+                android:id="@+id/rb_tutti"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tutti"
+                android:textColor="#FFFFFF"
+                android:checked="true"
+                android:buttonTint="#FFC107"
+                android:layout_marginEnd="12dp"/>
 
-</LinearLayout>
+            <RadioButton
+                android:id="@+id/rb_gratis"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Gratis"
+                android:textColor="#81C784"
+                android:buttonTint="#81C784"
+                android:layout_marginEnd="12dp"/>
+
+            <RadioButton
+                android:id="@+id/rb_pagamento"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Pagamento"
+                android:buttonTint="#E57373"
+                android:textColor="#E57373"/>
+        </RadioGroup>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_applica_filtri"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="APPLICA FILTRI 🔍"
+            android:textColor="#212121"
+            android:textStyle="bold"
+            app:cornerRadius="16dp"
+            app:backgroundTint="#FFC107"
+            app:elevation="4dp"/>
+
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

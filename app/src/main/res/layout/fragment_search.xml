@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#E0E0E0">
+    android:background="#212121">
 
     <org.osmdroid.views.MapView
         android:id="@+id/map"
@@ -19,10 +19,10 @@
         android:layout_marginTop="16dp"
         android:layout_marginStart="16dp"
         android:src="@android:drawable/ic_menu_revert"
-        app:backgroundTint="#FFFFFF"
-        app:tint="#37474F"
+        app:backgroundTint="#FFC107"
+        app:tint="#212121"
         app:fabSize="mini"
-        app:elevation="6dp"/>
+        app:elevation="8dp"/>
 
     <androidx.cardview.widget.CardView
         android:id="@+id/card_search"
@@ -32,14 +32,14 @@
         android:layout_marginEnd="16dp"
         android:layout_toEndOf="@id/btn_back_home"
         android:layout_marginStart="8dp"
-        app:cardCornerRadius="8dp"
-        app:cardElevation="6dp">
+        app:cardBackgroundColor="#212121"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="8dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:background="#FFFFFF">
+            android:orientation="vertical">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -55,7 +55,8 @@
                     android:text="🔍 Filtri"
                     android:textAlignment="viewStart"
                     style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:textColor="#37474F"/>
+                    android:textColor="#FFC107"
+                    android:textStyle="bold"/>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_toggle_list"
@@ -64,7 +65,8 @@
                     android:layout_weight="3"
                     android:text="Lista ⬇"
                     style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:textColor="#2962FF"/>
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"/>
             </LinearLayout>
 
             <TextView
@@ -74,21 +76,18 @@
                 android:text="Tutti i parcheggi vicini"
                 android:padding="8dp"
                 android:textSize="12sp"
-                android:textColor="#78909C"
-                android:background="#FAFAFA"/>
+                android:textColor="#BDBDBD"
+                android:background="#2C2C2C"/>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_view_results"
+                android:layout_width="match_parent"
+                android:layout_height="250dp"
+                android:background="#333333"
+                android:visibility="gone"/>
+
         </LinearLayout>
     </androidx.cardview.widget.CardView>
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recycler_view_results"
-        android:layout_width="match_parent"
-        android:layout_height="250dp"
-        android:layout_below="@id/card_search"
-        android:layout_alignStart="@id/card_search"
-        android:layout_alignEnd="@id/card_search"
-        android:background="#FFFFFF"
-        android:elevation="8dp"
-        android:visibility="gone"/>
 
     <LinearLayout
         android:id="@+id/loading_container"
@@ -97,24 +96,22 @@
         android:layout_centerInParent="true"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="16dp"
+        android:padding="24dp"
         android:background="@drawable/bg_rounded_white"
         android:visibility="gone"
-        android:elevation="12dp">
-
+        android:elevation="20dp">
         <ProgressBar
             android:id="@+id/loading_bar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:indeterminateTint="#2962FF"/>
-
+            android:indeterminateTint="#FFC107"/>
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Ricerca parcheggi in zona..."
-            android:textColor="#546E7A"
-            android:textSize="12sp"
-            android:layout_marginTop="8dp"/>
+            android:text="Ricerca parcheggi..."
+            android:textColor="#212121"
+            android:textStyle="bold"
+            android:layout_marginTop="12dp"/>
     </LinearLayout>
 
     <LinearLayout
@@ -124,17 +121,15 @@
         android:layout_centerInParent="true"
         android:orientation="vertical"
         android:gravity="center"
-        android:background="#FFFFFF"
+        android:background="@drawable/bg_rounded_white"
         android:padding="24dp"
         android:visibility="gone"
-        android:elevation="10dp">
-
+        android:elevation="20dp">
         <ImageView
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:src="@android:drawable/ic_dialog_alert"
             app:tint="#D32F2F"/>
-
         <TextView
             android:id="@+id/txt_error_msg"
             android:layout_width="wrap_content"
@@ -144,15 +139,15 @@
             android:textStyle="bold"
             android:gravity="center"
             android:layout_marginTop="12dp"/>
-
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_retry"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="🔄 Riprova"
-            app:backgroundTint="#2962FF"
-            android:textColor="#FFFFFF"
-            android:layout_marginTop="16dp"/>
+            android:text="Riprova"
+            app:backgroundTint="#212121"
+            android:textColor="#FFC107"
+            android:layout_marginTop="16dp"
+            app:cornerRadius="12dp"/>
     </LinearLayout>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -164,6 +159,7 @@
         android:layout_margin="24dp"
         android:src="@android:drawable/ic_menu_mylocation"
         app:backgroundTint="#FFFFFF"
-        app:tint="#2962FF"/>
+        app:tint="#212121"
+        app:elevation="8dp"/>
 
 </RelativeLayout>

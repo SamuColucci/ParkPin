@@ -147,19 +147,20 @@ public class SearchFragment extends Fragment implements LocationListener {
 
         // --- NUOVA LOGICA PULSANTE MOSTRA/NASCONDI LISTA ---
         btnToggleList.setOnClickListener(v -> {
+            // Avvia un'animazione di transizione sulla card dei filtri
+            android.transition.TransitionManager.beginDelayedTransition((ViewGroup) view.findViewById(R.id.card_search));
+
             if (isListaVisibile) {
-                // Nascondi
                 recyclerViewResults.setVisibility(View.GONE);
                 btnToggleList.setText("Lista ⬇");
                 isListaVisibile = false;
             } else {
-                // Mostra (se ci sono dati)
                 if (!adapter.isEmpty()) {
                     recyclerViewResults.setVisibility(View.VISIBLE);
                     btnToggleList.setText("Lista ⬆");
                     isListaVisibile = true;
                 } else {
-                    Toast.makeText(requireContext(), "Nessun risultato da mostrare", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), "Nessun risultato", Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -410,14 +411,17 @@ public class SearchFragment extends Fragment implements LocationListener {
     }
 
     private void mostrarDialogFiltri() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         View view = getLayoutInflater().inflate(R.layout.dialog_search_filters, null);
-        builder.setView(view);
-        AlertDialog dialog = builder.create();
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(view).create();
+
+        // Fondamentale per il tema scuro con angoli arrotondati
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+        }
 
         EditText etNome = view.findViewById(R.id.et_filtro_nome);
         RadioGroup rgCosto = view.findViewById(R.id.rg_costo);
+
         etNome.setText(currentFiltroTesto);
         if(currentFiltroCosto.equals("GRATIS")) rgCosto.check(R.id.rb_gratis);
         else if(currentFiltroCosto.equals("PAGAMENTO")) rgCosto.check(R.id.rb_pagamento);
@@ -429,6 +433,7 @@ public class SearchFragment extends Fragment implements LocationListener {
             int id = rgCosto.getCheckedRadioButtonId();
             if (id == R.id.rb_gratis) currentFiltroCosto = "GRATIS";
             else if (id == R.id.rb_pagamento) currentFiltroCosto = "PAGAMENTO";
+
             visualizzaDati(currentFiltroTesto, currentFiltroCosto, true);
             dialog.dismiss();
         });
@@ -451,22 +456,33 @@ public class SearchFragment extends Fragment implements LocationListener {
     }
 
     private void confermaNavigazione(String nome, GeoPoint pos, boolean isPagamento) {
-        new AlertDialog.Builder(requireContext())
-                .setTitle(nome)
-                .setMessage("Avviare navigazione?")
-                .setPositiveButton("VAI 🚗", (d, w) -> avviaNavigazione(pos, nome, isPagamento))
-                .setNegativeButton("Annulla", null)
-                .show();
+        // Infla il layout personalizzato
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_start_navigation, null);
+
+        TextView txtAddress = dialogView.findViewById(R.id.txt_nav_address);
+        txtAddress.setText(nome);
+
+        // Crea il Dialog
+        AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(dialogView).create();
+
+        // Rende lo sfondo trasparente per vedere gli angoli tondi della Card
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setGravity(android.view.Gravity.BOTTOM); // Appare dal basso
+        }
+
+        dialogView.findViewById(R.id.btn_nav_cancel).setOnClickListener(v -> dialog.dismiss());
+        dialogView.findViewById(R.id.btn_nav_confirm).setOnClickListener(v -> {
+            avviaNavigazione(pos, nome, isPagamento);
+            dialog.dismiss();
+        });
+
+        dialog.show();
     }
 
+    // Aggiorna anche il double tap sulla mappa per usare lo stesso stile
     private void mostraDialogNavigazioneCustom(GeoPoint p) {
-        new AlertDialog.Builder(requireContext())
-                .setTitle("Destinazione Custom")
-                .setMessage("Navigare verso questo punto?")
-                .setPositiveButton("SÌ", (d, w) -> {
-                    Marker m = new Marker(map); m.setPosition(p); map.getOverlays().add(m); map.invalidate();
-                    avviaNavigazione(p, "Punto Selezionato", false);
-                }).setNegativeButton("No", null).show();
+        confermaNavigazione("Punto Selezionato", p, false);
     }
 
     private void avviaNavigazione(GeoPoint dest, String nome, boolean isPaid) {

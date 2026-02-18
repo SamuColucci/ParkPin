@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -74,6 +75,8 @@ public class HomeFragment extends Fragment {
 
         // --- LISTENERS ---
 
+
+
         // Ricerca Parcheggio
         view.findViewById(R.id.btn_mappa).setOnClickListener(v ->
                 NavHostFragment.findNavController(this).navigate(R.id.action_home_to_search));
@@ -99,6 +102,15 @@ public class HomeFragment extends Fragment {
                 NavHostFragment.findNavController(this).navigate(R.id.action_home_to_nav, b);
             }
         });
+        // INTERROMPI NAVIGAZIONE (Nuovo stile)
+        view.findViewById(R.id.btn_stop_nav_home).setOnClickListener(v -> mostraDialogAnnullaNavigazione());
+
+        // ELIMINA AUTO SALVATA (Nuovo stile)
+        view.findViewById(R.id.btn_elimina_auto).setOnClickListener(v -> mostraDialogEliminaAuto());
+
+        // MODIFICA NOTA (Nuovo stile)
+        view.findViewById(R.id.btn_edit_note).setOnClickListener(v -> mostraDialogModificaNota());
+
 
         // Avvia Ritorno all'Auto
         view.findViewById(R.id.btn_ritorna_auto).setOnClickListener(v -> avviaNavigazioneVersoAuto());
@@ -125,22 +137,104 @@ public class HomeFragment extends Fragment {
             Toast.makeText(requireContext(), "Posizione e timer eliminati", Toast.LENGTH_SHORT).show();
         });
 
-        // Interrompi Navigazione Attiva
-        view.findViewById(R.id.btn_stop_nav_home).setOnClickListener(v -> {
-            new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                    .setTitle("Interrompere?")
-                    .setMessage("Vuoi davvero annullare la navigazione verso il parcheggio?")
-                    .setPositiveButton("Sì, annulla", (dialog, which) -> {
-                        requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE).edit()
-                                .putBoolean("navigazione_attiva", false)
-                                .remove("dest_lat").remove("dest_lon").remove("dest_nome").remove("dest_is_paid")
-                                .apply();
-                        aggiornaStatoUI();
-                        Toast.makeText(requireContext(), "Navigazione annullata", Toast.LENGTH_SHORT).show();
-                    })
-                    .setNegativeButton("No", null)
-                    .show();
+
+        // Trova il bottone Info
+        com.google.android.material.button.MaterialButton btnInfo = view.findViewById(R.id.btn_info_app);
+
+        btnInfo.setOnClickListener(v -> {
+            // 1. Infla il layout personalizzato
+            android.view.View dialogView = android.view.LayoutInflater.from(requireContext())
+                    .inflate(R.layout.dialog_app_info, null);
+
+            // 2. Crea il Dialogo
+            android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
+                    .setView(dialogView)
+                    .create();
+
+            // 3. Rendi lo sfondo del dialogo trasparente (per vedere gli angoli tondi della CardView)
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+            }
+
+            // 4. Gestisci il bottone Chiudi dentro il layout personalizzato
+            dialogView.findViewById(R.id.btn_chiudi_dialog).setOnClickListener(view1 -> dialog.dismiss());
+
+            // 5. Mostra
+            dialog.show();
         });
+    }
+    private void mostraDialogAnnullaNavigazione() {
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_stop_navigation, null);
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
+                .setView(dialogView)
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        dialogView.findViewById(R.id.btn_keep_nav).setOnClickListener(v -> dialog.dismiss());
+        dialogView.findViewById(R.id.btn_confirm_stop).setOnClickListener(v -> {
+            requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE).edit()
+                    .putBoolean("navigazione_attiva", false)
+                    .remove("dest_lat").remove("dest_lon").remove("dest_nome").remove("dest_is_paid")
+                    .apply();
+            aggiornaStatoUI();
+            Toast.makeText(requireContext(), "Navigazione annullata", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+        });
+        dialog.show();
+    }
+
+    private void mostraDialogInfoApp() {
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_app_info, null);
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
+                .setView(dialogView)
+                .create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+        dialogView.findViewById(R.id.btn_chiudi_dialog).setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
+    }
+
+
+    private void mostraDialogEliminaAuto() {
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_stop_navigation, null);
+
+        // Personalizziamo i testi del layout esistente per il cestino
+        TextView title = dialogView.findViewById(R.id.txt_nav_title); // Se hai messo ID nel layout
+        TextView msg = dialogView.findViewById(R.id.txt_nav_address);
+        if(title != null) title.setText("Eliminare Posizione?");
+        if(msg != null) msg.setText("L'auto salvata e il timer verranno rimossi definitivamente.");
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
+                .setView(dialogView)
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        dialogView.findViewById(R.id.btn_keep_nav).setOnClickListener(v -> dialog.dismiss());
+
+        dialogView.findViewById(R.id.btn_confirm_stop).setOnClickListener(v -> {
+            // Logica di eliminazione
+            try {
+                android.app.AlarmManager am = (android.app.AlarmManager) requireContext().getSystemService(Context.ALARM_SERVICE);
+                android.content.Intent intent = new android.content.Intent(requireContext(), ParkingAlarmReceiver.class);
+                android.app.PendingIntent pi = android.app.PendingIntent.getBroadcast(requireContext(), 0, intent, android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
+                if (am != null) am.cancel(pi);
+            } catch (Exception e) {}
+
+            requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE).edit()
+                    .remove("auto_salvata").remove("car_lat").remove("car_lon")
+                    .remove("note_auto").remove("orario_scadenza_timer").apply();
+
+            aggiornaStatoUI();
+            dialog.dismiss();
+        });
+        dialog.show();
     }
 
     // METODO SUPPORTO PER LA CONDIVISIONE
@@ -178,37 +272,42 @@ public class HomeFragment extends Fragment {
         }
     }
 
+
     private void mostraDialogModificaNota() {
         SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
         String notaAttuale = prefs.getString("note_auto", "");
 
-        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(requireContext());
-        builder.setTitle("Modifica Nota");
+        // 1. Infla il layout personalizzato
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_note, null);
+        com.google.android.material.textfield.TextInputEditText etNota = dialogView.findViewById(R.id.et_edit_nota_input);
 
-        // Creiamo un EditText per l'input
-        final android.widget.EditText input = new android.widget.EditText(requireContext());
-        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-        input.setText(notaAttuale);
-        input.setSelection(input.getText().length()); // Cursore alla fine
+        // Imposta la nota attuale nel campo di testo
+        etNota.setText(notaAttuale);
+        if (notaAttuale != null) etNota.setSelection(notaAttuale.length());
 
-        // Aggiungiamo un po' di margine all'EditText
-        android.widget.FrameLayout container = new android.widget.FrameLayout(requireContext());
-        android.widget.FrameLayout.LayoutParams params = new android.widget.FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        params.leftMargin = 50; params.rightMargin = 50;
-        input.setLayoutParams(params);
-        container.addView(input);
-        builder.setView(container);
+        // 2. Crea il Dialog
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
+                .setView(dialogView)
+                .create();
 
-        builder.setPositiveButton("Salva", (dialog, which) -> {
-            String nuovaNota = input.getText().toString().trim();
+        // 3. Sfondo trasparente per gli angoli tondi
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+
+        // 4. Listener Bottoni
+        dialogView.findViewById(R.id.btn_cancel_note).setOnClickListener(v -> dialog.dismiss());
+
+        dialogView.findViewById(R.id.btn_save_note_confirm).setOnClickListener(v -> {
+            String nuovaNota = etNota.getText().toString().trim();
             prefs.edit().putString("note_auto", nuovaNota).apply();
+
             Toast.makeText(requireContext(), "Nota aggiornata ✅", Toast.LENGTH_SHORT).show();
-            // Se avessi una TextView che mostra la nota in Home, chiameresti aggiornaStatoUI() qui
+            aggiornaStatoUI(); // Ricarica la UI per mostrare la nuova nota se necessario
+            dialog.dismiss();
         });
 
-        builder.setNegativeButton("Annulla", null);
-        builder.show();
+        dialog.show();
     }
 
     private void aggiornaStatoUI() {
