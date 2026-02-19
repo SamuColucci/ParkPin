@@ -417,22 +417,6 @@ public class NavFragment extends Fragment {
         }
     }
 
-    private void mostraSelettoreOrario() {
-        Calendar oraAttuale = Calendar.getInstance();
-        int h = oraAttuale.get(Calendar.HOUR_OF_DAY);
-        int m = oraAttuale.get(Calendar.MINUTE);
-
-        TimePickerDialog timePicker = new TimePickerDialog(requireContext(),
-                (view, hourOfDay, minute) -> {
-                    // Utilizza la Utility creata precedentemente
-                    NotificationHelper.prenotaAvviso(requireContext(), hourOfDay, minute);
-                    tornaAllaHome();
-                }, h, m, true);
-
-        timePicker.setOnCancelListener(dialog -> tornaAllaHome());
-        timePicker.show();
-    }
-
 
     private void apriGoogleMaps() {
         Uri gmmIntentUri = Uri.parse("google.navigation:q=" + destinazionePoint.getLatitude() + "," + destinazionePoint.getLongitude());

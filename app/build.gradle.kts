@@ -71,6 +71,8 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.9.3")
 
     implementation("com.google.android.gms:play-services-location:21.0.1")
+
+    implementation("androidx.core:core-splashscreen:1.0.1")
 }
 
 // Blocco di sicurezza globale per il conflitto Jetbrains/IntelliJ

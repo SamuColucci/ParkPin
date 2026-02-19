@@ -157,7 +157,10 @@ public class SaveCarFragment extends Fragment implements LocationListener {
             map.getController().setCenter(p);
 
             // APRE LA NOTA
-            mostraDialogNota(isPaid);
+            // Se è a pagamento, apri direttamente il Timer
+            if (isPaid) {
+                mostraDialogTimer();
+            }
             caricaParcheggiVicini(lat, lon);
         } else {
             isPosizioneInizialeImpostata = false;
@@ -191,49 +194,6 @@ public class SaveCarFragment extends Fragment implements LocationListener {
         behavior.setState(com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED);
     }
 
-    // NUOVO METODO: Gestione del Dialog per la Nota
-    private void mostraDialogNota(boolean isPaid) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-        builder.setTitle("Nota Parcheggio");
-        builder.setMessage("Aggiungi una nota opzionale per trovare l'auto più facilmente (es. Piano -1, Settore Blu).");
-
-        LinearLayout layout = new LinearLayout(requireContext());
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(50, 40, 50, 10);
-
-        final EditText inputNota = new EditText(requireContext());
-        inputNota.setHint("Inserisci nota qui...");
-        layout.addView(inputNota);
-
-        builder.setView(layout);
-
-        builder.setPositiveButton("Salva Nota", (dialog, which) -> {
-            String notaInserita = inputNota.getText().toString().trim();
-            if (!notaInserita.isEmpty()) {
-                // Uniamo la nuova nota ad un eventuale testo già presente (es. "(A Pagamento)")
-                String notaAttuale = etNote.getText().toString().trim();
-                if (!notaAttuale.isEmpty()) {
-                    etNote.setText(notaAttuale + " - " + notaInserita);
-                } else {
-                    etNote.setText(notaInserita);
-                }
-            }
-            // Dopo aver salvato la nota, se è a pagamento, mostra il timer
-            if (isPaid) {
-                mostraDialogTimer();
-            }
-        });
-
-        builder.setNegativeButton("Salta", (dialog, which) -> {
-            // Se salta la nota ma è a pagamento, mostra comunque il timer
-            if (isPaid) {
-                mostraDialogTimer();
-            }
-        });
-
-        builder.setCancelable(false); // Obbliga l'utente a interagire con i pulsanti
-        builder.show();
-    }
 
     private void aggiornaPosizioneScelta(GeoPoint p) {
         latSelezionata = p.getLatitude();
@@ -408,24 +368,53 @@ public class SaveCarFragment extends Fragment implements LocationListener {
             final String finalNome = nomeReale;
             final boolean finalIsPagamento = isPagamento;
 
+            // NUOVO CODICE (Stile Dark & Yellow):
             m.setOnMarkerClickListener((marker, mapView) -> {
-                new AlertDialog.Builder(requireContext())
-                        .setTitle("Salvare qui?")
-                        .setMessage("Vuoi impostare '" + finalNome + "' come posizione auto?")
-                        .setPositiveButton("SÌ", (dialog, which) -> {
-                            GeoPoint posParcheggio = marker.getPosition();
-                            aggiornaPosizioneScelta(posParcheggio);
-                            map.getController().animateTo(posParcheggio);
-                            Toast.makeText(requireContext(), "Posizione aggiornata!", Toast.LENGTH_SHORT).show();
+                // 1. Infla il layout condiviso Dark & Yellow
+                View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_stop_navigation, null);
 
-                            if (finalIsPagamento) etNote.setText("(A Pagamento)");
-                            else etNote.setText("");
+                // 2. Personalizza i testi per il salvataggio
+                TextView title = dialogView.findViewById(R.id.txt_nav_title);
+                TextView msg = dialogView.findViewById(R.id.txt_nav_address);
+                com.google.android.material.button.MaterialButton btnAnnulla = dialogView.findViewById(R.id.btn_keep_nav);
+                com.google.android.material.button.MaterialButton btnConferma = dialogView.findViewById(R.id.btn_confirm_stop);
 
-                            // ---> MODIFICA: Richiamiamo il flusso nota -> timer
-                            mostraDialogNota(finalIsPagamento);
-                            // <---
-                        })
-                        .setNegativeButton("No", null).show();
+                if(title != null) title.setText("Salvare qui?");
+                if(msg != null) msg.setText("Vuoi impostare '" + finalNome + "' come posizione auto?");
+                if(btnAnnulla != null) btnAnnulla.setText("Annulla");
+                if(btnConferma != null) btnConferma.setText("SÌ, SALVA");
+
+                // 3. Crea il Dialogo
+                android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
+                        .setView(dialogView)
+                        .create();
+
+                // 4. Sfondo trasparente per gli angoli tondi
+                if (dialog.getWindow() != null) {
+                    dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+                }
+
+                // 5. Listener Bottoni
+                dialogView.findViewById(R.id.btn_keep_nav).setOnClickListener(v -> dialog.dismiss());
+
+                dialogView.findViewById(R.id.btn_confirm_stop).setOnClickListener(v -> {
+                    GeoPoint posParcheggio = marker.getPosition();
+                    aggiornaPosizioneScelta(posParcheggio);
+                    map.getController().animateTo(posParcheggio);
+                    Toast.makeText(requireContext(), "Posizione aggiornata!", Toast.LENGTH_SHORT).show();
+
+                    if (finalIsPagamento) etNote.setText("(A Pagamento)");
+                    else etNote.setText("");
+
+                    dialog.dismiss(); // Chiudi il dialog prima di aprire il timer
+
+                    // Se è a pagamento, mostra direttamente il popup del timer
+                    if (finalIsPagamento) {
+                        mostraDialogTimer();
+                    }
+                });
+
+                dialog.show();
                 return true;
             });
 
