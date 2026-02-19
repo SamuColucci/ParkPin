@@ -44,10 +44,10 @@
                         android:id="@+id/img_logo_header"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:padding="14dp"
-                        android:src="@drawable/logo_parkpin"
+                        android:padding="0dp"
+                        android:src="@drawable/logo_yellow2"
                         android:scaleType="fitCenter"
-                        app:tint="#212121"/>
+                        />
                 </com.google.android.material.card.MaterialCardView>
 
                 <LinearLayout
@@ -404,7 +404,7 @@
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Info &amp; Stato"
+                android:text="Info &amp; Help"
                 android:textSize="11sp"
                 android:textColor="#757575"
                 app:strokeColor="#424242"

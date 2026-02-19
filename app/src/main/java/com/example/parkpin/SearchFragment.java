@@ -250,8 +250,9 @@ public class SearchFragment extends Fragment implements LocationListener {
             loadingContainer.setVisibility(View.GONE);
             layoutError.setVisibility(View.GONE);
             tuttiParcheggiScaricati = ParkingCache.parcheggiSalvati;
-            if (fromButton) Toast.makeText(requireContext(), "Uso dati in memoria ⚡", Toast.LENGTH_SHORT).show();
-            visualizzaDati(currentFiltroTesto, currentFiltroCosto, true);
+
+            // MODIFICA: Ora passiamo 'false' per NON forzare l'apertura della lista al ricentramento
+            visualizzaDati(currentFiltroTesto, currentFiltroCosto, false);
         } else {
             scaricaDatiParcheggi(lat, lon);
         }
@@ -286,7 +287,7 @@ public class SearchFragment extends Fragment implements LocationListener {
             public void onResponse(Call<OverpassResponse> call, Response<OverpassResponse> response) {
                 loadingContainer.setVisibility(View.GONE);
                 if (!isAdded() || map == null || map.getRepository() == null) {
-                    return; // L'utente è uscito, fermiamo tutto!
+                    return;
                 }
 
                 if (response.isSuccessful() && response.body() != null) {
@@ -300,8 +301,9 @@ public class SearchFragment extends Fragment implements LocationListener {
                         ParkingCache.parcheggiSalvati = tuttiParcheggiScaricati;
                         ParkingCache.posizioneSalvataggio = new GeoPoint(lat, lon);
 
-                        boolean mostraLista = !currentFiltroCosto.equals("TUTTI") || !currentFiltroTesto.isEmpty();
-                        visualizzaDati(currentFiltroTesto, currentFiltroCosto, mostraLista);
+                        // MODIFICA: Passiamo 'false' anche qui per non forzarla all'apertura
+                        visualizzaDati(currentFiltroTesto, currentFiltroCosto, false);
+
                         Log.d("PARKPIN_DEBUG", "✅ SUCCESSO Search: " + tuttiParcheggiScaricati.size());
                         Toast.makeText(requireContext(), "Trovati: " + tuttiParcheggiScaricati.size(), Toast.LENGTH_SHORT).show();
                     }
@@ -398,8 +400,8 @@ public class SearchFragment extends Fragment implements LocationListener {
 
         adapter.aggiornaDati(risultatiFiltrati);
 
-        // Se la lista era aperta o i filtri richiedono visualizzazione, mostrala
-        if (mostraLista && !risultatiFiltrati.isEmpty()) {
+        // MODIFICA: Mantiene la lista aperta SE era già aperta, OPPURE la apre se applichiamo filtri (mostraLista = true)
+        if ((mostraLista || isListaVisibile) && !risultatiFiltrati.isEmpty()) {
             recyclerViewResults.setVisibility(View.VISIBLE);
             btnToggleList.setText("Lista ⬆");
             isListaVisibile = true;
