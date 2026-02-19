@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.os.Build;
 import android.widget.Toast;
 import java.util.Calendar;
@@ -102,7 +103,6 @@ public class NotificationHelper {
         NotificationManager notificationManager =
                 (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 
-        // Creazione del Canale (Android 8+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     channelId, "Notifica Arrivo",
@@ -112,15 +112,25 @@ public class NotificationHelper {
             if (notificationManager != null) notificationManager.createNotificationChannel(channel);
         }
 
-        // Costruzione della Notifica
+        // Convertiamo il logo colorato per la Large Icon
+        Bitmap largeIcon = android.graphics.BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_splash_logo);
+
         androidx.core.app.NotificationCompat.Builder builder =
                 new androidx.core.app.NotificationCompat.Builder(context, channelId)
+                        // USARE SEMPRE UNA VETTORIALE TRASPARENTE PER SMALL ICON
                         .setSmallIcon(R.drawable.baseline_directions_car_24)
+
+                        // Colora l'icona piccola
+                        .setColor(android.graphics.Color.parseColor("#FFC107"))
+
+                        // Metti il logo colorato qui
+                        .setLargeIcon(largeIcon)
+
                         .setContentTitle("ParkPin")
                         .setContentText("Sei arrivato alla tua auto! 🚗")
                         .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
                         .setAutoCancel(true)
-                        .setVibrate(new long[]{0, 500, 200, 500}); // Vibrazione personalizzata
+                        .setVibrate(new long[]{0, 500, 200, 500});
 
         if (notificationManager != null) {
             notificationManager.notify(2002, builder.build());

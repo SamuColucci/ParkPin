@@ -146,6 +146,7 @@ public class HomeFragment extends Fragment {
             dialog.show();
         });
     }
+
     private void mostraDialogAnnullaNavigazione() {
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_stop_navigation, null);
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())

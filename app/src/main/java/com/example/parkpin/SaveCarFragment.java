@@ -202,7 +202,13 @@ public class SaveCarFragment extends Fragment implements LocationListener {
                 }
             } catch (IOException e) { e.printStackTrace(); }
             String finale = testo;
-            requireActivity().runOnUiThread(() -> txtIndirizzo.setText(finale));
+            if (isAdded() && getActivity() != null) {
+                getActivity().runOnUiThread(() -> {
+                    if (txtIndirizzo != null) {
+                        txtIndirizzo.setText(finale);
+                    }
+                });
+            }
         }).start();
     }
 
