@@ -1,67 +1,173 @@
 package com.example.parkpin;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
+import androidx.core.splashscreen.SplashScreen;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.core.splashscreen.SplashScreen;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
-    // Launcher per gestire la risposta dell'utente alla richiesta permessi
-    private final ActivityResultLauncher<String> requestPermissionLauncher =
-            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
-                if (!isGranted) {
-                    // L'utente ha negato il permesso: avvisiamolo delle conseguenze
-                    Toast.makeText(this, "Attenzione: senza notifiche non riceverai gli avvisi di scadenza parcheggio!", Toast.LENGTH_LONG).show();
-                }
+    private AlertDialog gpsDialog;
+    private BroadcastReceiver gpsReceiver;
+
+    private final ActivityResultLauncher<String[]> requestPermissionsLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
+                // Dopo la richiesta, controlliamo subito se dobbiamo bloccare l'app
+                checkGpsStatus();
             });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         SplashScreen.installSplashScreen(this);
-
-        // Attiva la modalità a tutto schermo (barra trasparente)
         EdgeToEdge.enable(this);
-
         setContentView(R.layout.activity_main);
 
-        // Nasconde la barra viola in alto
         if (getSupportActionBar() != null) {
             getSupportActionBar().hide();
         }
 
-        // Gestisce i margini di sistema (Status Bar, Navigation Bar)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
 
-        // --- AVVIA RICHIESTA PERMESSI ---
-        chiediPermessoNotifiche();
+        gpsReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (LocationManager.PROVIDERS_CHANGED_ACTION.equals(intent.getAction())) {
+                    checkGpsStatus();
+                }
+            }
+        };
+
+        gestisciPermessiIniziali();
     }
 
-    private void chiediPermessoNotifiche() {
-        // Il permesso POST_NOTIFICATIONS è obbligatorio da Android 13 (API 33) in su
+    private void gestisciPermessiIniziali() {
+        List<String> permessiDaChiedere = new ArrayList<>();
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            permessiDaChiedere.add(Manifest.permission.ACCESS_FINE_LOCATION);
+            permessiDaChiedere.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
-                    PackageManager.PERMISSION_GRANTED) {
-
-                // Mostra il popup di sistema per le notifiche
-                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                permessiDaChiedere.add(Manifest.permission.POST_NOTIFICATIONS);
             }
         }
+        if (!permessiDaChiedere.isEmpty()) {
+            requestPermissionsLauncher.launch(permessiDaChiedere.toArray(new String[0]));
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        registerReceiver(gpsReceiver, new IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION));
+        checkGpsStatus(); // Controllo fondamentale ogni volta che l'utente torna nell'app
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (gpsReceiver != null) unregisterReceiver(gpsReceiver);
+    }
+
+    private void checkGpsStatus() {
+        // 1. Controllo Permessi (Software)
+        boolean hasPermission = ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+
+        // 2. Controllo Sensore (Hardware)
+        LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        boolean isGpsEnabled = false;
+        try {
+            isGpsEnabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        } catch (Exception ignored) {}
+
+        // Se manca il permesso O il sensore è spento, mostriamo il dialog di blocco
+        if (!hasPermission || !isGpsEnabled) {
+            showGpsDialog(!hasPermission);
+        } else {
+            if (gpsDialog != null && gpsDialog.isShowing()) {
+                gpsDialog.dismiss();
+            }
+        }
+    }
+
+    private void showGpsDialog(boolean isPermissionIssue) {
+        if (gpsDialog != null && gpsDialog.isShowing()) return;
+
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_gps_required, null);
+
+        // Personalizziamo i testi del dialog esistente
+        TextView title = view.findViewById(R.id.txt_dialog_title); // Assicurati di avere questi ID nel tuo XML
+        TextView desc = view.findViewById(R.id.txt_dialog_msg);
+        com.google.android.material.button.MaterialButton btn = view.findViewById(R.id.btn_activate_gps);
+
+        if (isPermissionIssue) {
+            if(title != null) title.setText("Permessi Necessari");
+            if(desc != null) desc.setText("ParkPin richiede il permesso di posizione per funzionare. Senza di esso non potrai usare le mappe.");
+            btn.setText("DAI PERMESSO");
+        } else {
+            if(title != null) title.setText("GPS Disattivato");
+            if(desc != null) desc.setText("ParkPin richiede il GPS attivo per funzionare correttamente. Riattivalo ora.");
+            btn.setText("ATTIVA GPS");
+        }
+
+        gpsDialog = new AlertDialog.Builder(this)
+                .setView(view)
+                .setCancelable(false)
+                .create();
+
+        if (gpsDialog.getWindow() != null) {
+            gpsDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        btn.setOnClickListener(v -> {
+            if (isPermissionIssue) {
+                // Se l'utente ha negato permanentemente, lo mandiamo alle impostazioni dell'app
+                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                Uri uri = Uri.fromParts("package", getPackageName(), null);
+                intent.setData(uri);
+                startActivity(intent);
+            } else {
+                // Altrimenti lo mandiamo alle impostazioni del sensore GPS
+                Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                startActivity(intent);
+            }
+        });
+
+        gpsDialog.show();
     }
 }
