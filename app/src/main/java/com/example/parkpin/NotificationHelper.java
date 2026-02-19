@@ -1,6 +1,8 @@
 package com.example.parkpin;
 
 import android.app.AlarmManager;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -54,12 +56,41 @@ public class NotificationHelper {
         String orario = String.format("%02d:%02d", oraScadenza, minutiScadenza);
         Toast.makeText(context, "Avviso impostato per le " + orario, Toast.LENGTH_SHORT).show();
 
-
         context.getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE)
                 .edit()
                 .putString("orario_scadenza_timer", orario)
                 .apply();
     }
+
+    /**
+     * NUOVO METODO: Cancella l'avviso programmato
+     */
+    public static void cancellaAvviso(Context context) {
+        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+
+        // Deve corrispondere ESATTAMENTE all'Intent usato in prenotaAvviso
+        Intent intent = new Intent(context, ParkingAlarmReceiver.class);
+
+        // ID 0 e Flag devono essere identici a quelli di creazione
+        PendingIntent pi = PendingIntent.getBroadcast(context, 0, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        if (am != null) {
+            am.cancel(pi); // Ferma il timer di sistema
+        }
+        if (pi != null) {
+            pi.cancel(); // Distrugge il PendingIntent
+        }
+
+        // Rimuove la preferenza salvata
+        context.getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE)
+                .edit()
+                .remove("orario_scadenza_timer")
+                .apply();
+
+        // Non mostriamo Toast qui perché lo gestisce già il Fragment nel popup di conferma
+    }
+
     public static void inviaNotificaArrivoImmediata(Context context) {
 
         if (System.currentTimeMillis() - lastNotificationTime < 30000) {
@@ -68,14 +99,14 @@ public class NotificationHelper {
 
         lastNotificationTime = System.currentTimeMillis();
         String channelId = "arrival_notification_channel";
-        android.app.NotificationManager notificationManager =
-                (android.app.NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationManager notificationManager =
+                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 
         // Creazione del Canale (Android 8+)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            android.app.NotificationChannel channel = new android.app.NotificationChannel(
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
                     channelId, "Notifica Arrivo",
-                    android.app.NotificationManager.IMPORTANCE_HIGH);
+                    NotificationManager.IMPORTANCE_HIGH);
             channel.setDescription("Avviso quando sei vicino all'auto");
             channel.enableVibration(true);
             if (notificationManager != null) notificationManager.createNotificationChannel(channel);
@@ -94,8 +125,8 @@ public class NotificationHelper {
         if (notificationManager != null) {
             notificationManager.notify(2002, builder.build());
         }
-
     }
+
     public static void schedulaProssimoControlloPosizione(Context context) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(context, LocationCheckReceiver.class);
@@ -112,10 +143,6 @@ public class NotificationHelper {
                 } else {
                     // Fallback: Allarme non esatto (non crasha)
                     am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, tempoProssimoControllo, pi);
-
-                    // Opzionale: Chiedi all'utente di abilitare il permesso nelle impostazioni
-                    // Intent i = new Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
-                    // context.startActivity(i);
                 }
             } else {
                 // Sotto Android 12 funzionava senza permessi speciali

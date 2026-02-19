@@ -2,7 +2,6 @@ package com.example.parkpin;
 
 import android.Manifest;
 import android.app.AlertDialog;
-import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -20,7 +19,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -53,7 +51,6 @@ import java.util.concurrent.TimeUnit;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
@@ -99,12 +96,10 @@ public class SaveCarFragment extends Fragment implements LocationListener {
         etNote = view.findViewById(R.id.et_note_save);
         txtTimerStatus = view.findViewById(R.id.txt_timer_status_save);
 
-        // I 4 ELEMENTI CRITICI
         loadingContainer = view.findViewById(R.id.loading_container);
         layoutError = view.findViewById(R.id.layout_error_retry);
-        txtErrorMsg = view.findViewById(R.id.txt_error_msg); // Ora esiste nell'XML
-        btnRetry = view.findViewById(R.id.btn_retry);       // Ora esiste nell'XML
-
+        txtErrorMsg = view.findViewById(R.id.txt_error_msg);
+        btnRetry = view.findViewById(R.id.btn_retry);
 
         // MAPPA
         map.setTileSource(TileSourceFactory.MAPNIK);
@@ -144,7 +139,7 @@ public class SaveCarFragment extends Fragment implements LocationListener {
         view.findViewById(R.id.btn_zoom_in).setOnClickListener(v -> map.getController().zoomIn());
         view.findViewById(R.id.btn_zoom_out).setOnClickListener(v -> map.getController().zoomOut());
 
-        // LOGICA AVVIO PULITA E UNICA
+        // LOGICA AVVIO
         if (getArguments() != null && getArguments().containsKey("lat_arrivo")) {
             double lat = getArguments().getFloat("lat_arrivo");
             double lon = getArguments().getFloat("lon_arrivo");
@@ -156,8 +151,6 @@ public class SaveCarFragment extends Fragment implements LocationListener {
             aggiornaPosizioneScelta(p);
             map.getController().setCenter(p);
 
-            // APRE LA NOTA
-            // Se è a pagamento, apri direttamente il Timer
             if (isPaid) {
                 mostraDialogTimer();
             }
@@ -180,20 +173,14 @@ public class SaveCarFragment extends Fragment implements LocationListener {
 
         view.findViewById(R.id.btn_back_home).setOnClickListener(v -> NavHostFragment.findNavController(this).popBackStack());
 
-        // Trova la card e attiva il BottomSheetBehavior
-
-        // Trova il Bottom Sheet
+        // BottomSheet
         View bottomSheet = view.findViewById(R.id.card_bottom_save);
         com.google.android.material.bottomsheet.BottomSheetBehavior<View> behavior =
                 com.google.android.material.bottomsheet.BottomSheetBehavior.from(bottomSheet);
-
-// Configurazione comportamento
-        behavior.setHideable(false); // Non si può nascondere del tutto
-        behavior.setPeekHeight(450); // Altezza minima se l'utente la abbassa
-// Forza l'apertura totale all'avvio
+        behavior.setHideable(false);
+        behavior.setPeekHeight(450);
         behavior.setState(com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED);
     }
-
 
     private void aggiornaPosizioneScelta(GeoPoint p) {
         latSelezionata = p.getLatitude();
@@ -228,10 +215,8 @@ public class SaveCarFragment extends Fragment implements LocationListener {
         if(loc == null) try { loc = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER); } catch(Exception e){}
 
         if (loc != null) {
-            Log.d("PARKPIN_DEBUG", "Posizione trovata subito: " + loc.getLatitude());
             usarePosizioneTrovata(loc);
         } else {
-            Log.d("PARKPIN_DEBUG", "GPS Freddo. Richiedo aggiornamento...");
             Toast.makeText(requireContext(), "Cerco segnale GPS...", Toast.LENGTH_SHORT).show();
             loadingContainer.setVisibility(View.VISIBLE);
             try {
@@ -243,10 +228,7 @@ public class SaveCarFragment extends Fragment implements LocationListener {
 
     @Override
     public void onLocationChanged(@NonNull Location location) {
-        Log.d("PARKPIN_DEBUG", "Posizione aggiornata dal Listener!");
-
         if (locationManager != null) locationManager.removeUpdates(this);
-
         if (!isPosizioneInizialeImpostata) {
             usarePosizioneTrovata(location);
         }
@@ -256,30 +238,20 @@ public class SaveCarFragment extends Fragment implements LocationListener {
         GeoPoint myPos = new GeoPoint(loc.getLatitude(), loc.getLongitude());
         map.getController().animateTo(myPos);
         aggiornaPosizioneScelta(myPos);
-
         isPosizioneInizialeImpostata = true;
-
-        // Chiama la ricerca: sarà lei a gestire il caricamento
         caricaParcheggiVicini(loc.getLatitude(), loc.getLongitude());
     }
 
-    // --- CARICAMENTO CON POPUP STILE SEARCH FRAGMENT ---
-    // --- CARICAMENTO CON POPUP STILE SEARCH FRAGMENT ---
     private void caricaParcheggiVicini(double lat, double lon) {
-        // START: Mostra il popup e nascondi errori
         loadingContainer.setVisibility(View.VISIBLE);
         layoutError.setVisibility(View.GONE);
 
-        Log.d("PARKPIN_DEBUG", "🚀 Inizio ricerca parcheggi...");
-
-        // Gestione Cache (uguale a checkDatiEVisualizza di Search)
         if (ParkingCache.parcheggiSalvati != null && !ParkingCache.parcheggiSalvati.isEmpty()) {
-            loadingContainer.setVisibility(View.GONE); // Qui ha senso spegnere perché i dati sono istantanei
+            loadingContainer.setVisibility(View.GONE);
             disegnaParcheggiSullaMappa(ParkingCache.parcheggiSalvati);
             return;
         }
 
-        // Ricerca via Retrofit
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(60, TimeUnit.SECONDS)
                 .readTimeout(60, TimeUnit.SECONDS)
@@ -298,9 +270,7 @@ public class SaveCarFragment extends Fragment implements LocationListener {
         retrofit.create(OverpassService.class).cercaParcheggi(query).enqueue(new retrofit2.Callback<OverpassResponse>() {
             @Override
             public void onResponse(Call<OverpassResponse> call, Response<OverpassResponse> response) {
-                // FINISH: Nascondi il caricamento solo qui
                 loadingContainer.setVisibility(View.GONE);
-
                 if (response.isSuccessful() && response.body() != null) {
                     List<OverpassResponse.Elemento> risultati = response.body().elementi;
                     if (risultati != null && !risultati.isEmpty()) {
@@ -319,7 +289,6 @@ public class SaveCarFragment extends Fragment implements LocationListener {
 
             @Override
             public void onFailure(Call<OverpassResponse> call, Throwable t) {
-                // FINISH: Nascondi il caricamento in caso di fallimento
                 loadingContainer.setVisibility(View.GONE);
                 layoutError.setVisibility(View.VISIBLE);
                 txtErrorMsg.setText("Errore di connessione.");
@@ -328,10 +297,7 @@ public class SaveCarFragment extends Fragment implements LocationListener {
     }
 
     private void disegnaParcheggiSullaMappa(List<OverpassResponse.Elemento> lista) {
-        if (lista == null || map == null) return;
-        if (getContext() == null || map.getRepository() == null) {
-            return;
-        }
+        if (lista == null || map == null || getContext() == null) return;
 
         for (Marker m : parcheggiMarkers) map.getOverlays().remove(m);
         parcheggiMarkers.clear();
@@ -368,12 +334,8 @@ public class SaveCarFragment extends Fragment implements LocationListener {
             final String finalNome = nomeReale;
             final boolean finalIsPagamento = isPagamento;
 
-            // NUOVO CODICE (Stile Dark & Yellow):
             m.setOnMarkerClickListener((marker, mapView) -> {
-                // 1. Infla il layout condiviso Dark & Yellow
                 View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_stop_navigation, null);
-
-                // 2. Personalizza i testi per il salvataggio
                 TextView title = dialogView.findViewById(R.id.txt_nav_title);
                 TextView msg = dialogView.findViewById(R.id.txt_nav_address);
                 com.google.android.material.button.MaterialButton btnAnnulla = dialogView.findViewById(R.id.btn_keep_nav);
@@ -384,19 +346,15 @@ public class SaveCarFragment extends Fragment implements LocationListener {
                 if(btnAnnulla != null) btnAnnulla.setText("Annulla");
                 if(btnConferma != null) btnConferma.setText("SÌ, SALVA");
 
-                // 3. Crea il Dialogo
                 android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
                         .setView(dialogView)
                         .create();
 
-                // 4. Sfondo trasparente per gli angoli tondi
                 if (dialog.getWindow() != null) {
                     dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
                 }
 
-                // 5. Listener Bottoni
                 dialogView.findViewById(R.id.btn_keep_nav).setOnClickListener(v -> dialog.dismiss());
-
                 dialogView.findViewById(R.id.btn_confirm_stop).setOnClickListener(v -> {
                     GeoPoint posParcheggio = marker.getPosition();
                     aggiornaPosizioneScelta(posParcheggio);
@@ -406,9 +364,8 @@ public class SaveCarFragment extends Fragment implements LocationListener {
                     if (finalIsPagamento) etNote.setText("(A Pagamento)");
                     else etNote.setText("");
 
-                    dialog.dismiss(); // Chiudi il dialog prima di aprire il timer
+                    dialog.dismiss();
 
-                    // Se è a pagamento, mostra direttamente il popup del timer
                     if (finalIsPagamento) {
                         mostraDialogTimer();
                     }
@@ -439,32 +396,36 @@ public class SaveCarFragment extends Fragment implements LocationListener {
         NavHostFragment.findNavController(this).navigate(R.id.action_save_to_home);
     }
 
+    // --- METODO MODIFICATO: Collegato il tasto ELIMINA ---
     private void mostraDialogTimer() {
-        // 1. Infla il layout
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_timer_custom, null);
 
-        // Trova il TimePicker
         TimePicker tp = dialogView.findViewById(R.id.custom_time_picker);
         tp.setIs24HourView(true);
-        tp.getChildAt(0).setBackgroundColor(Color.TRANSPARENT);
+        // Fix per renderlo più leggibile se necessario, ma il theme XML fa il lavoro grosso
+        if(tp.getChildCount() > 0) tp.getChildAt(0).setBackgroundColor(Color.TRANSPARENT);
 
-        // 2. Crea il Dialog
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
                 .setView(dialogView)
                 .create();
 
-        // 3. Sfondo trasparente (essenziale per vedere gli angoli tondi della Card)
         if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
         }
 
-        // 4. Gestione bottoni con colori forzati via codice
-        com.google.android.material.button.MaterialButton btnAnnulla = dialogView.findViewById(R.id.btn_annulla_timer);
-        com.google.android.material.button.MaterialButton btnConferma = dialogView.findViewById(R.id.btn_conferma_timer);
+        // --- GESTIONE BOTTONE ELIMINA ---
+        View btnElimina = dialogView.findViewById(R.id.btn_elimina_timer);
+        if (btnElimina != null) {
+            btnElimina.setOnClickListener(v -> {
+                dialog.dismiss(); // Chiudi il dialog del timer
+                mostraConfermaRimozioneTimer(); // Apri il dialog di conferma
+            });
+        }
 
-        btnAnnulla.setOnClickListener(v -> dialog.dismiss());
+        // --- GESTIONE ALTRI BOTTONI ---
+        dialogView.findViewById(R.id.btn_annulla_timer).setOnClickListener(v -> dialog.dismiss());
 
-        btnConferma.setOnClickListener(v -> {
+        dialogView.findViewById(R.id.btn_conferma_timer).setOnClickListener(v -> {
             int hour, minute;
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
                 hour = tp.getHour();
@@ -479,6 +440,37 @@ public class SaveCarFragment extends Fragment implements LocationListener {
         });
 
         dialog.show();
+    }
+
+    // --- NUOVO METODO: Popup Conferma Cancellazione ---
+    private void mostraConfermaRimozioneTimer() {
+        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_delete_confirmation, null);
+
+        AlertDialog confirmDialog = new AlertDialog.Builder(requireContext())
+                .setView(view)
+                .create();
+
+        if (confirmDialog.getWindow() != null) {
+            confirmDialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+        }
+
+        // Bottone Annulla
+        view.findViewById(R.id.btn_annulla_delete).setOnClickListener(v -> confirmDialog.dismiss());
+
+        // Bottone Conferma Rimozione
+        view.findViewById(R.id.btn_conferma_delete).setOnClickListener(v -> {
+            // 1. Cancella notifica
+            NotificationHelper.cancellaAvviso(requireContext());
+
+            // 2. Aggiorna UI
+            txtTimerStatus.setText("");
+
+            // 3. Feedback e chiusura
+            Toast.makeText(requireContext(), "Timer rimosso correttamente", Toast.LENGTH_SHORT).show();
+            confirmDialog.dismiss();
+        });
+
+        confirmDialog.show();
     }
 
     private void schedulaNotifica(int oraScadenza, int minutiScadenza) {

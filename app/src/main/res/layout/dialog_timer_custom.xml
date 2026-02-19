@@ -35,13 +35,27 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:timePickerMode="spinner"
-            android:calendarViewShown="false" />
+            android:calendarViewShown="false"
+            android:theme="@style/ThemeOverlay.AppCompat.Light"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_elimina_timer"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="ELIMINA TIMER"
+            android:textColor="#D32F2F"
+            android:textStyle="bold"
+            app:icon="@android:drawable/ic_menu_delete"
+            app:iconTint="#D32F2F"
+            app:iconGravity="textStart"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"/>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="24dp">
+            android:orientation="horizontal">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_annulla_timer"

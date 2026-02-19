@@ -118,24 +118,7 @@ public class HomeFragment extends Fragment {
         // CONDIVIDI POSIZIONE (Nuovo!)
         view.findViewById(R.id.btn_share_location).setOnClickListener(v -> condividiPosizioneAuto());
 
-        // Elimina Auto Salvata
-        view.findViewById(R.id.btn_elimina_auto).setOnClickListener(v -> {
-            try {
-                android.app.AlarmManager am = (android.app.AlarmManager) requireContext().getSystemService(Context.ALARM_SERVICE);
-                android.content.Intent intent = new android.content.Intent(requireContext(), ParkingAlarmReceiver.class);
-                android.app.PendingIntent pi = android.app.PendingIntent.getBroadcast(
-                        requireContext(), 0, intent,
-                        android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
-                if (am != null) am.cancel(pi);
-            } catch (Exception e) { e.printStackTrace(); }
 
-            requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE).edit()
-                    .remove("auto_salvata").remove("car_lat").remove("car_lon")
-                    .remove("note_auto").remove("orario_scadenza_timer").apply();
-
-            aggiornaStatoUI();
-            Toast.makeText(requireContext(), "Posizione e timer eliminati", Toast.LENGTH_SHORT).show();
-        });
 
 
         // Trova il bottone Info
@@ -198,44 +181,6 @@ public class HomeFragment extends Fragment {
         dialog.show();
     }
 
-
-    private void mostraDialogEliminaAuto() {
-        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_stop_navigation, null);
-
-        // Personalizziamo i testi del layout esistente per il cestino
-        TextView title = dialogView.findViewById(R.id.txt_nav_title); // Se hai messo ID nel layout
-        TextView msg = dialogView.findViewById(R.id.txt_nav_address);
-        if(title != null) title.setText("Eliminare Posizione?");
-        if(msg != null) msg.setText("L'auto salvata e il timer verranno rimossi definitivamente.");
-
-        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
-                .setView(dialogView)
-                .create();
-
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        }
-
-        dialogView.findViewById(R.id.btn_keep_nav).setOnClickListener(v -> dialog.dismiss());
-
-        dialogView.findViewById(R.id.btn_confirm_stop).setOnClickListener(v -> {
-            // Logica di eliminazione
-            try {
-                android.app.AlarmManager am = (android.app.AlarmManager) requireContext().getSystemService(Context.ALARM_SERVICE);
-                android.content.Intent intent = new android.content.Intent(requireContext(), ParkingAlarmReceiver.class);
-                android.app.PendingIntent pi = android.app.PendingIntent.getBroadcast(requireContext(), 0, intent, android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
-                if (am != null) am.cancel(pi);
-            } catch (Exception e) {}
-
-            requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE).edit()
-                    .remove("auto_salvata").remove("car_lat").remove("car_lon")
-                    .remove("note_auto").remove("orario_scadenza_timer").apply();
-
-            aggiornaStatoUI();
-            dialog.dismiss();
-        });
-        dialog.show();
-    }
 
     // METODO SUPPORTO PER LA CONDIVISIONE
     private void condividiPosizioneAuto() {
@@ -439,7 +384,63 @@ public class HomeFragment extends Fragment {
         });
         mapPreviewCurrent.invalidate();
     }
+    private void mostraDialogEliminaAuto() {
+        // 1. Infla il layout
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_delete_confirmation, null);
 
+        // 2. CAMBIA I TESTI PER L'AUTO (Qui sta la magia)
+        TextView txtTitolo = dialogView.findViewById(R.id.txt_dialog_title);
+        TextView txtMessaggio = dialogView.findViewById(R.id.txt_dialog_msg);
+
+        if (txtTitolo != null) {
+            txtTitolo.setText("Eliminare Posizione?");
+        }
+        if (txtMessaggio != null) {
+            txtMessaggio.setText("Vuoi rimuovere l'auto salvata? Anche eventuali timer verranno cancellati.");
+        }
+
+        // 3. Crea il Dialog
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
+                .setView(dialogView)
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        // 4. Listener Annulla
+        dialogView.findViewById(R.id.btn_annulla_delete).setOnClickListener(v -> dialog.dismiss());
+
+        // 5. Listener Conferma Eliminazione
+        dialogView.findViewById(R.id.btn_conferma_delete).setOnClickListener(v -> {
+
+            // A. Cancella Timer e Notifiche
+            try {
+                android.app.AlarmManager am = (android.app.AlarmManager) requireContext().getSystemService(Context.ALARM_SERVICE);
+                android.content.Intent intent = new android.content.Intent(requireContext(), ParkingAlarmReceiver.class);
+                android.app.PendingIntent pi = android.app.PendingIntent.getBroadcast(
+                        requireContext(), 0, intent,
+                        android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
+                if (am != null) am.cancel(pi);
+            } catch (Exception e) { e.printStackTrace(); }
+
+            // B. Pulisci SharedPreferences
+            requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE).edit()
+                    .remove("auto_salvata")
+                    .remove("car_lat")
+                    .remove("car_lon")
+                    .remove("note_auto")
+                    .remove("orario_scadenza_timer")
+                    .apply();
+
+            // C. Aggiorna UI
+            Toast.makeText(requireContext(), "Posizione auto rimossa", Toast.LENGTH_SHORT).show();
+            aggiornaStatoUI();
+            dialog.dismiss();
+        });
+
+        dialog.show();
+    }
     @Override
     public void onResume() {
         super.onResume();

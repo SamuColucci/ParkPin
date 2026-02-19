@@ -186,12 +186,15 @@
                     android:hint="Note (Piano, N. Posto...)"
                     app:boxStrokeColor="#FFC107"
                     app:hintTextColor="#757575"
+                    android:textColorHint="#757575"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_note_save"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:textColor="#212121"
+                        android:textColorHint="#757575"
                         android:inputType="textCapSentences"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
