@@ -22,19 +22,17 @@ public class LocationCheckReceiver extends BroadcastReceiver {
 
         LocationManager lm = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
         try {
-            // Proviamo a prendere la posizione GPS (più precisa)
+
             Location loc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
 
-            // Se la posizione GPS è vecchia o nulla, proviamo quella di rete
+            // Se la posizione GPS è nulla, proviamo quella di rete anche se meno precisa
             if (loc == null) {
                 loc = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
             }
 
             if (loc != null) {
-                // CONTROLLO PRECISIONE: Se l'errore è > 50 metri, la posizione non è affidabile
                 if (loc.getAccuracy() > 50) {
                     Log.d("PARKPIN_ALARM", "Posizione poco precisa (" + loc.getAccuracy() + "m). Riprovo...");
-                    // Non mandiamo la notifica, ma programmiamo un nuovo controllo ravvicinato
                     NotificationHelper.schedulaProssimoControlloPosizione(context);
                     return;
                 }
@@ -45,14 +43,13 @@ public class LocationCheckReceiver extends BroadcastReceiver {
 
                 Log.d("PARKPIN_ALARM", "Distanza precisa: " + (int)distance + "m (Acc: " + loc.getAccuracy() + "m)");
 
-                if (distance < 50) { // SOGLIA ARRIVO (leggermente alzata per compensare il background)
+                if (distance < 50) {
                     NotificationHelper.inviaNotificaArrivoImmediata(context);
                     prefs.edit().putBoolean("navigazione_attiva", false).apply();
                 } else {
                     NotificationHelper.schedulaProssimoControlloPosizione(context);
                 }
             } else {
-                // Nessuna posizione trovata, riprova al prossimo ciclo
                 NotificationHelper.schedulaProssimoControlloPosizione(context);
             }
         } catch (SecurityException e) {

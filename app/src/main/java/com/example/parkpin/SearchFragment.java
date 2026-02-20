@@ -88,7 +88,7 @@ public class SearchFragment extends Fragment implements LocationListener {
     private final ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
                 if (isGranted) attivaPosizioneUtente();
-                else Toast.makeText(requireContext(), "Permesso GPS necessario", Toast.LENGTH_SHORT).show();
+                //else Toast.makeText(requireContext(), "Permesso GPS necessario", Toast.LENGTH_SHORT).show();
             });
 
     public SearchFragment() {}
@@ -102,7 +102,6 @@ public class SearchFragment extends Fragment implements LocationListener {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // UI BINDING
         map = view.findViewById(R.id.map);
         txtCriteriAttivi = view.findViewById(R.id.txt_criteri_attivi);
         recyclerViewResults = view.findViewById(R.id.recycler_view_results);
@@ -110,20 +109,17 @@ public class SearchFragment extends Fragment implements LocationListener {
         layoutError = view.findViewById(R.id.layout_error_retry);
         txtErrorMsg = view.findViewById(R.id.txt_error_msg);
         btnRetry = view.findViewById(R.id.btn_retry);
-        btnToggleList = view.findViewById(R.id.btn_toggle_list); // NUOVO
+        btnToggleList = view.findViewById(R.id.btn_toggle_list);
 
-        // LISTA
         recyclerViewResults.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new ParcheggioAdapter(new ArrayList<>(), this::onParcheggioClick);
         recyclerViewResults.setAdapter(adapter);
         recyclerViewResults.setVisibility(View.GONE);
 
-        // MAPPA
         map.setTileSource(TileSourceFactory.MAPNIK);
         map.setMultiTouchControls(true);
         map.getController().setZoom(16.5);
 
-        // TOUCH OVERLAY
         Overlay touchOverlay = new Overlay() {
             @Override
             public boolean onDoubleTap(MotionEvent e, MapView mapView) {
@@ -135,19 +131,15 @@ public class SearchFragment extends Fragment implements LocationListener {
         };
         map.getOverlays().add(touchOverlay);
 
-        // GPS
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             attivaPosizioneUtente();
         } else {
             requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
         }
 
-        // LISTENERS
         view.findViewById(R.id.btn_cerca_parcheggi).setOnClickListener(v -> mostrarDialogFiltri());
 
-        // --- NUOVA LOGICA PULSANTE MOSTRA/NASCONDI LISTA ---
         btnToggleList.setOnClickListener(v -> {
-            // Avvia un'animazione di transizione sulla card dei filtri
             android.transition.TransitionManager.beginDelayedTransition((ViewGroup) view.findViewById(R.id.card_search));
 
             if (isListaVisibile) {
@@ -164,7 +156,6 @@ public class SearchFragment extends Fragment implements LocationListener {
                 }
             }
         });
-        // --------------------------------------------------
 
         view.findViewById(R.id.fab_centra_posizione).setOnClickListener(v -> {
             if (myLocationOverlay != null && myLocationOverlay.getMyLocation() != null) {
@@ -173,7 +164,6 @@ public class SearchFragment extends Fragment implements LocationListener {
                 myLocationOverlay.enableFollowLocation();
                 checkDatiEVisualizza(myPos.getLatitude(), myPos.getLongitude(), true);
             } else {
-                Toast.makeText(requireContext(), "Attendo GPS...", Toast.LENGTH_SHORT).show();
                 attivaPosizioneUtente();
             }
         });
@@ -199,7 +189,7 @@ public class SearchFragment extends Fragment implements LocationListener {
         if (lastKnown == null) try { lastKnown = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER); } catch (Exception e) {}
 
         if (lastKnown != null) {
-            Log.d("PARKPIN_DEBUG", "Posizione trovata subito: " + lastKnown.getLatitude());
+            Log.d("PARKPIN_DEBUG", "Posizione trovata" + lastKnown.getLatitude());
             GeoPoint startPoint = new GeoPoint(lastKnown.getLatitude(), lastKnown.getLongitude());
             map.getController().setCenter(startPoint);
             if (!isPrimoCaricamentoEffettuato) {
@@ -207,7 +197,7 @@ public class SearchFragment extends Fragment implements LocationListener {
                 isPrimoCaricamentoEffettuato = true;
             }
         } else {
-            Log.d("PARKPIN_DEBUG", "GPS Freddo in Search. Richiedo aggiornamento...");
+            Log.d("PARKPIN_DEBUG", "Richiesta aggiornamento GPS");
             loadingContainer.setVisibility(View.VISIBLE);
             try {
                 locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
@@ -250,8 +240,6 @@ public class SearchFragment extends Fragment implements LocationListener {
             loadingContainer.setVisibility(View.GONE);
             layoutError.setVisibility(View.GONE);
             tuttiParcheggiScaricati = ParkingCache.parcheggiSalvati;
-
-            // MODIFICA: Ora passiamo 'false' per NON forzare l'apertura della lista al ricentramento
             visualizzaDati(currentFiltroTesto, currentFiltroCosto, false);
         } else {
             scaricaDatiParcheggi(lat, lon);
@@ -301,11 +289,9 @@ public class SearchFragment extends Fragment implements LocationListener {
                         ParkingCache.parcheggiSalvati = tuttiParcheggiScaricati;
                         ParkingCache.posizioneSalvataggio = new GeoPoint(lat, lon);
 
-                        // MODIFICA: Passiamo 'false' anche qui per non forzarla all'apertura
                         visualizzaDati(currentFiltroTesto, currentFiltroCosto, false);
 
                         Log.d("PARKPIN_DEBUG", "✅ SUCCESSO Search: " + tuttiParcheggiScaricati.size());
-                        Toast.makeText(requireContext(), "Trovati: " + tuttiParcheggiScaricati.size(), Toast.LENGTH_SHORT).show();
                     }
                 } else {
                     layoutError.setVisibility(View.VISIBLE);
@@ -350,7 +336,6 @@ public class SearchFragment extends Fragment implements LocationListener {
                 else nome = "Parcheggio Pubblico";
             }
 
-            // LOGICA STRADA
             String strada = (p.tags != null && p.tags.street != null) ? p.tags.street : "";
 
             boolean isPagamento = false;
@@ -400,7 +385,6 @@ public class SearchFragment extends Fragment implements LocationListener {
 
         adapter.aggiornaDati(risultatiFiltrati);
 
-        // MODIFICA: Mantiene la lista aperta SE era già aperta, OPPURE la apre se applichiamo filtri (mostraLista = true)
         if ((mostraLista || isListaVisibile) && !risultatiFiltrati.isEmpty()) {
             recyclerViewResults.setVisibility(View.VISIBLE);
             btnToggleList.setText("Lista ⬆");
@@ -416,7 +400,6 @@ public class SearchFragment extends Fragment implements LocationListener {
         View view = getLayoutInflater().inflate(R.layout.dialog_search_filters, null);
         AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(view).create();
 
-        // Fondamentale per il tema scuro con angoli arrotondati
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
         }
@@ -458,19 +441,16 @@ public class SearchFragment extends Fragment implements LocationListener {
     }
 
     private void confermaNavigazione(String nome, GeoPoint pos, boolean isPagamento) {
-        // Infla il layout personalizzato
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_start_navigation, null);
 
         TextView txtAddress = dialogView.findViewById(R.id.txt_nav_address);
         txtAddress.setText(nome);
 
-        // Crea il Dialog
         AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(dialogView).create();
 
-        // Rende lo sfondo trasparente per vedere gli angoli tondi della Card
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
-            dialog.getWindow().setGravity(android.view.Gravity.BOTTOM); // Appare dal basso
+            dialog.getWindow().setGravity(android.view.Gravity.BOTTOM);
         }
 
         dialogView.findViewById(R.id.btn_nav_cancel).setOnClickListener(v -> dialog.dismiss());
@@ -482,7 +462,6 @@ public class SearchFragment extends Fragment implements LocationListener {
         dialog.show();
     }
 
-    // Aggiorna anche il double tap sulla mappa per usare lo stesso stile
     private void mostraDialogNavigazioneCustom(GeoPoint p) {
         confermaNavigazione("Punto Selezionato", p, false);
     }
@@ -499,14 +478,11 @@ public class SearchFragment extends Fragment implements LocationListener {
                 .putFloat("dest_lat", (float) dest.getLatitude())
                 .putFloat("dest_lon", (float) dest.getLongitude())
                 .putString("dest_nome", nome)
-                // Rimosso .putString("dest_nota", nota)
                 .apply();
 
         NavHostFragment.findNavController(this).navigate(R.id.action_search_to_nav, bundle);
     }
 
-
-    // --- ADAPTER AGGIORNATO CON STRADA ---
     private static class ParcheggioAdapter extends RecyclerView.Adapter<ParcheggioAdapter.ViewHolder> {
         private List<OverpassResponse.Elemento> list;
         private final OnItemClickListener listener;
@@ -522,7 +498,6 @@ public class SearchFragment extends Fragment implements LocationListener {
         @Override public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             OverpassResponse.Elemento p = list.get(position);
 
-            // Nome
             String nome = "Parcheggio";
             if (p.tags != null) {
                 if (p.tags.name != null && !p.tags.name.isEmpty()) nome = p.tags.name;
@@ -530,7 +505,6 @@ public class SearchFragment extends Fragment implements LocationListener {
                 else nome = "Parcheggio Pubblico";
             }
 
-            // Strada
             String strada = (p.tags != null && p.tags.street != null) ? p.tags.street : "";
 
             boolean isPagamento = false;
@@ -541,7 +515,6 @@ public class SearchFragment extends Fragment implements LocationListener {
 
             holder.txtName.setText(nome);
 
-            // Info complete: Pagamento + Strada
             String info = isPagamento ? "💰 Pagamento" : "🆓 Gratis";
             if (!strada.isEmpty()) info += " • " + strada;
             holder.txtType.setText(info);

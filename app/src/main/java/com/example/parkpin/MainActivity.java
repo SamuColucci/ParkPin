@@ -41,7 +41,6 @@ public class MainActivity extends AppCompatActivity {
 
     private final ActivityResultLauncher<String[]> requestPermissionsLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
-                // Dopo la richiesta, controlliamo subito se dobbiamo bloccare l'app
                 checkGpsStatus();
             });
 
@@ -94,7 +93,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         registerReceiver(gpsReceiver, new IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION));
-        checkGpsStatus(); // Controllo fondamentale ogni volta che l'utente torna nell'app
+        checkGpsStatus();
     }
 
     @Override
@@ -104,18 +103,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkGpsStatus() {
-        // 1. Controllo Permessi (Software)
         boolean hasPermission = ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
 
-        // 2. Controllo Sensore (Hardware)
         LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         boolean isGpsEnabled = false;
         try {
             isGpsEnabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER);
         } catch (Exception ignored) {}
 
-        // Se manca il permesso O il sensore è spento, mostriamo il dialog di blocco
         if (!hasPermission || !isGpsEnabled) {
             showGpsDialog(!hasPermission);
         } else {
@@ -130,8 +126,7 @@ public class MainActivity extends AppCompatActivity {
 
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_gps_required, null);
 
-        // Personalizziamo i testi del dialog esistente
-        TextView title = view.findViewById(R.id.txt_dialog_title); // Assicurati di avere questi ID nel tuo XML
+        TextView title = view.findViewById(R.id.txt_dialog_title);
         TextView desc = view.findViewById(R.id.txt_dialog_msg);
         com.google.android.material.button.MaterialButton btn = view.findViewById(R.id.btn_activate_gps);
 
@@ -156,13 +151,11 @@ public class MainActivity extends AppCompatActivity {
 
         btn.setOnClickListener(v -> {
             if (isPermissionIssue) {
-                // Se l'utente ha negato permanentemente, lo mandiamo alle impostazioni dell'app
                 Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                 Uri uri = Uri.fromParts("package", getPackageName(), null);
                 intent.setData(uri);
                 startActivity(intent);
             } else {
-                // Altrimenti lo mandiamo alle impostazioni del sensore GPS
                 Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
                 startActivity(intent);
             }

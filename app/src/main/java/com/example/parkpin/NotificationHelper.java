@@ -15,16 +15,13 @@ public class NotificationHelper {
 
     private static long lastNotificationTime = 0;
 
-    /**
-     * Metodo unico per programmare l'avviso di scadenza
-     */
     public static void prenotaAvviso(Context context, int oraScadenza, int minutiScadenza) {
         Calendar calendarScadenza = Calendar.getInstance();
         calendarScadenza.set(Calendar.HOUR_OF_DAY, oraScadenza);
         calendarScadenza.set(Calendar.MINUTE, minutiScadenza);
         calendarScadenza.set(Calendar.SECOND, 0);
 
-        // Se l'orario è già passato, s'intende domani
+        // Controllo per verificare se la data utilizzata è già scaduta
         if (calendarScadenza.before(Calendar.getInstance())) {
             calendarScadenza.add(Calendar.DAY_OF_MONTH, 1);
         }
@@ -32,7 +29,6 @@ public class NotificationHelper {
         // Notifica 10 minuti prima
         long tempoNotifica = calendarScadenza.getTimeInMillis() - (10 * 60 * 1000);
 
-        // Se mancano meno di 10 minuti, avvisiamo tra 30 secondi
         if (tempoNotifica <= System.currentTimeMillis()) {
             tempoNotifica = System.currentTimeMillis() + (30 * 1000);
         }
@@ -63,33 +59,27 @@ public class NotificationHelper {
                 .apply();
     }
 
-    /**
-     * NUOVO METODO: Cancella l'avviso programmato
-     */
     public static void cancellaAvviso(Context context) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
 
-        // Deve corrispondere ESATTAMENTE all'Intent usato in prenotaAvviso
         Intent intent = new Intent(context, ParkingAlarmReceiver.class);
 
-        // ID 0 e Flag devono essere identici a quelli di creazione
         PendingIntent pi = PendingIntent.getBroadcast(context, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         if (am != null) {
-            am.cancel(pi); // Ferma il timer di sistema
+            am.cancel(pi);
         }
         if (pi != null) {
-            pi.cancel(); // Distrugge il PendingIntent
+            pi.cancel();
         }
 
-        // Rimuove la preferenza salvata
         context.getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE)
                 .edit()
                 .remove("orario_scadenza_timer")
                 .apply();
 
-        // Non mostriamo Toast qui perché lo gestisce già il Fragment nel popup di conferma
+
     }
 
     public static void inviaNotificaArrivoImmediata(Context context) {
@@ -112,18 +102,13 @@ public class NotificationHelper {
             if (notificationManager != null) notificationManager.createNotificationChannel(channel);
         }
 
-        // Convertiamo il logo colorato per la Large Icon
         Bitmap largeIcon = android.graphics.BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_splash_logo);
 
         androidx.core.app.NotificationCompat.Builder builder =
                 new androidx.core.app.NotificationCompat.Builder(context, channelId)
-                        // USARE SEMPRE UNA VETTORIALE TRASPARENTE PER SMALL ICON
                         .setSmallIcon(R.drawable.baseline_directions_car_24)
 
-                        // Colora l'icona piccola
                         .setColor(android.graphics.Color.parseColor("#FFC107"))
-
-                        // Metti il logo colorato qui
                         .setLargeIcon(largeIcon)
 
                         .setContentTitle("ParkPin")
@@ -143,19 +128,17 @@ public class NotificationHelper {
         PendingIntent pi = PendingIntent.getBroadcast(context, 100, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        long tempoProssimoControllo = System.currentTimeMillis() + (60 * 1000);
+        long tempoProssimoControllo = System.currentTimeMillis() + (30 * 1000);
 
         if (am != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                // CONTROLLO CRUCIALE: Se non abbiamo il permesso, usiamo un allarme normale
                 if (am.canScheduleExactAlarms()) {
                     am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, tempoProssimoControllo, pi);
                 } else {
-                    // Fallback: Allarme non esatto (non crasha)
                     am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, tempoProssimoControllo, pi);
                 }
+                //Controllo sotto API < 12
             } else {
-                // Sotto Android 12 funzionava senza permessi speciali
                 am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, tempoProssimoControllo, pi);
             }
         }

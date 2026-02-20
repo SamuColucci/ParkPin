@@ -90,24 +90,20 @@ public class SaveCarFragment extends Fragment implements LocationListener {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // UI BINDING
         map = view.findViewById(R.id.map_save);
         txtIndirizzo = view.findViewById(R.id.txt_indirizzo_dinamico);
         etNote = view.findViewById(R.id.et_note_save);
         txtTimerStatus = view.findViewById(R.id.txt_timer_status_save);
-
         loadingContainer = view.findViewById(R.id.loading_container);
         layoutError = view.findViewById(R.id.layout_error_retry);
         txtErrorMsg = view.findViewById(R.id.txt_error_msg);
         btnRetry = view.findViewById(R.id.btn_retry);
 
-        // MAPPA
         map.setTileSource(TileSourceFactory.MAPNIK);
         map.setMultiTouchControls(true);
         map.setBuiltInZoomControls(false);
         map.getController().setZoom(19.0);
 
-        // MARKER POSIZIONE AUTO
         markerPosizioneAuto = new Marker(map);
         markerPosizioneAuto.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
         markerPosizioneAuto.setIcon(ContextCompat.getDrawable(requireContext(), R.drawable.baseline_directions_car_24));
@@ -123,7 +119,6 @@ public class SaveCarFragment extends Fragment implements LocationListener {
         });
         map.getOverlays().add(markerPosizioneAuto);
 
-        // OVERLAY TOCCO MAPPA
         Overlay touchOverlay = new Overlay() {
             @Override
             public boolean onDoubleTap(MotionEvent e, MapView mapView) {
@@ -135,11 +130,9 @@ public class SaveCarFragment extends Fragment implements LocationListener {
         };
         map.getOverlays().add(touchOverlay);
 
-        // BOTTONI ZOOM
         view.findViewById(R.id.btn_zoom_in).setOnClickListener(v -> map.getController().zoomIn());
         view.findViewById(R.id.btn_zoom_out).setOnClickListener(v -> map.getController().zoomOut());
 
-        // LOGICA AVVIO
         if (getArguments() != null && getArguments().containsKey("lat_arrivo")) {
             double lat = getArguments().getFloat("lat_arrivo");
             double lon = getArguments().getFloat("lon_arrivo");
@@ -160,7 +153,6 @@ public class SaveCarFragment extends Fragment implements LocationListener {
             cercaPosizioneGPSIniziale();
         }
 
-        // LISTENERS
         view.findViewById(R.id.fab_my_pos_save).setOnClickListener(v -> {
             isPosizioneInizialeImpostata = false;
             cercaPosizioneGPSIniziale();
@@ -173,7 +165,6 @@ public class SaveCarFragment extends Fragment implements LocationListener {
 
         view.findViewById(R.id.btn_back_home).setOnClickListener(v -> NavHostFragment.findNavController(this).popBackStack());
 
-        // BottomSheet
         View bottomSheet = view.findViewById(R.id.card_bottom_save);
         com.google.android.material.bottomsheet.BottomSheetBehavior<View> behavior =
                 com.google.android.material.bottomsheet.BottomSheetBehavior.from(bottomSheet);
@@ -188,6 +179,7 @@ public class SaveCarFragment extends Fragment implements LocationListener {
         markerPosizioneAuto.setPosition(p);
         map.invalidate();
 
+        //Thread per trasformare un indirizzo in coordinate in uno leggibile
         new Thread(() -> {
             String testo = String.format("%.5f, %.5f", latSelezionata, lonSelezionata);
             try {
@@ -223,7 +215,6 @@ public class SaveCarFragment extends Fragment implements LocationListener {
         if (loc != null) {
             usarePosizioneTrovata(loc);
         } else {
-            Toast.makeText(requireContext(), "Cerco segnale GPS...", Toast.LENGTH_SHORT).show();
             loadingContainer.setVisibility(View.VISIBLE);
             try {
                 locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
@@ -402,13 +393,11 @@ public class SaveCarFragment extends Fragment implements LocationListener {
         NavHostFragment.findNavController(this).navigate(R.id.action_save_to_home);
     }
 
-    // --- METODO MODIFICATO: Collegato il tasto ELIMINA ---
     private void mostraDialogTimer() {
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_timer_custom, null);
 
         TimePicker tp = dialogView.findViewById(R.id.custom_time_picker);
         tp.setIs24HourView(true);
-        // Fix per renderlo più leggibile se necessario, ma il theme XML fa il lavoro grosso
         if(tp.getChildCount() > 0) tp.getChildAt(0).setBackgroundColor(Color.TRANSPARENT);
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
@@ -419,16 +408,14 @@ public class SaveCarFragment extends Fragment implements LocationListener {
             dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
         }
 
-        // --- GESTIONE BOTTONE ELIMINA ---
         View btnElimina = dialogView.findViewById(R.id.btn_elimina_timer);
         if (btnElimina != null) {
             btnElimina.setOnClickListener(v -> {
-                dialog.dismiss(); // Chiudi il dialog del timer
-                mostraConfermaRimozioneTimer(); // Apri il dialog di conferma
+                dialog.dismiss();
+                mostraConfermaRimozioneTimer();
             });
         }
 
-        // --- GESTIONE ALTRI BOTTONI ---
         dialogView.findViewById(R.id.btn_annulla_timer).setOnClickListener(v -> dialog.dismiss());
 
         dialogView.findViewById(R.id.btn_conferma_timer).setOnClickListener(v -> {
@@ -448,7 +435,6 @@ public class SaveCarFragment extends Fragment implements LocationListener {
         dialog.show();
     }
 
-    // --- NUOVO METODO: Popup Conferma Cancellazione ---
     private void mostraConfermaRimozioneTimer() {
         View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_delete_confirmation, null);
 
@@ -460,18 +446,11 @@ public class SaveCarFragment extends Fragment implements LocationListener {
             confirmDialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
         }
 
-        // Bottone Annulla
         view.findViewById(R.id.btn_annulla_delete).setOnClickListener(v -> confirmDialog.dismiss());
 
-        // Bottone Conferma Rimozione
         view.findViewById(R.id.btn_conferma_delete).setOnClickListener(v -> {
-            // 1. Cancella notifica
             NotificationHelper.cancellaAvviso(requireContext());
-
-            // 2. Aggiorna UI
             txtTimerStatus.setText("");
-
-            // 3. Feedback e chiusura
             Toast.makeText(requireContext(), "Timer rimosso correttamente", Toast.LENGTH_SHORT).show();
             confirmDialog.dismiss();
         });

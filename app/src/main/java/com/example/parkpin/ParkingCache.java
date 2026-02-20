@@ -4,11 +4,11 @@ import com.example.parkpin.data.OverpassResponse;
 import org.osmdroid.util.GeoPoint; // Import fondamentale
 import java.util.List;
 
+// Utilizziamo una cache dei parcheggi per risolvere il problema
+// legato al servizio non sempre raggiungibile per la ricerca dei parcheggi
 public class ParkingCache {
-    // 1. La lista dei parcheggi (i dati veri e propri)
     public static List<OverpassResponse.Elemento> parcheggiSalvati = null;
-
-    // 2. La posizione dove li abbiamo scaricati (per calcolare se siamo ancora vicini)
-    // QUESTA VARIABILE MANCAVA ed è fondamentale per la logica "intelligente"
+    // Variabile per la gestione della cache che permette di modificarla
+    // in caso di un allontanamento dall'ultima posizione salvata in cache
     public static GeoPoint posizioneSalvataggio = null;
 }

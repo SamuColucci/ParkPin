@@ -29,20 +29,24 @@ import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
-
+// Classe centrale dell'app divisa in base ai vari stati definiti attraverso
+// Interazione con l'utente:
+// Utente non ha ancora parcheggiato/salvato la posizione
+// Utente ha salvato una posizione da raggiungere
+// Utente ha avviato la navigazione
+// Utilizza OSMAndroid per mostrare la preview delle mappe
 public class HomeFragment extends Fragment {
 
     private LinearLayout layoutNormal, layoutNav, layoutRitorno;
     private View containerCenter, containerButtons;
     private TextView sottotitolo, txtTimerScadenza;
-
     private MapView mapPreviewSaved;
     private MapView mapPreviewCurrent;
     private MapView mapPreviewNav;
-
-    private MyLocationNewOverlay myLocationOverlay;    // Per mappa stato normale
-    private MyLocationNewOverlay myLocationNavOverlay; // Per mappa stato navigazione
-
+    //Overlay per mappa stato normale
+    private MyLocationNewOverlay myLocationOverlay;
+    //Overlay per mappa stato navigazione
+    private MyLocationNewOverlay myLocationNavOverlay;
     public HomeFragment() {}
 
     @Override
@@ -56,7 +60,6 @@ public class HomeFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // UI Setup
         sottotitolo = view.findViewById(R.id.txt_sottotitolo);
         txtTimerScadenza = view.findViewById(R.id.txt_home_timer_scadenza);
         containerCenter = view.findViewById(R.id.container_center);
@@ -64,28 +67,19 @@ public class HomeFragment extends Fragment {
         layoutNormal = view.findViewById(R.id.layout_normal);
         layoutNav = view.findViewById(R.id.layout_navigazione);
         layoutRitorno = view.findViewById(R.id.layout_ritorno_auto);
-
         mapPreviewSaved = view.findViewById(R.id.map_preview_home);
         mapPreviewCurrent = view.findViewById(R.id.map_preview_current);
         mapPreviewNav = view.findViewById(R.id.map_preview_nav);
-        // Modifica Nota Posizione
-        view.findViewById(R.id.btn_edit_note).setOnClickListener(v -> mostraDialogModificaNota());
 
+        view.findViewById(R.id.btn_edit_note).setOnClickListener(v -> mostraDialogModificaNota());
         aggiornaStatoUI();
 
-        // --- LISTENERS ---
-
-
-
-        // Ricerca Parcheggio
         view.findViewById(R.id.btn_mappa).setOnClickListener(v ->
                 NavHostFragment.findNavController(this).navigate(R.id.action_home_to_search));
 
-        // Salva Posizione Manuale
         view.findViewById(R.id.btn_salva_posizione).setOnClickListener(v ->
                 NavHostFragment.findNavController(this).navigate(R.id.action_home_to_save));
 
-        // Continua Navigazione Esistente
         view.findViewById(R.id.btn_continua_guida).setOnClickListener(v -> {
             SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
             float lat = prefs.getFloat("dest_lat", 0);
@@ -102,47 +96,35 @@ public class HomeFragment extends Fragment {
                 NavHostFragment.findNavController(this).navigate(R.id.action_home_to_nav, b);
             }
         });
-        // INTERROMPI NAVIGAZIONE (Nuovo stile)
+
         view.findViewById(R.id.btn_stop_nav_home).setOnClickListener(v -> mostraDialogAnnullaNavigazione());
 
-        // ELIMINA AUTO SALVATA (Nuovo stile)
         view.findViewById(R.id.btn_elimina_auto).setOnClickListener(v -> mostraDialogEliminaAuto());
 
-        // MODIFICA NOTA (Nuovo stile)
         view.findViewById(R.id.btn_edit_note).setOnClickListener(v -> mostraDialogModificaNota());
 
-
-        // Avvia Ritorno all'Auto
         view.findViewById(R.id.btn_ritorna_auto).setOnClickListener(v -> avviaNavigazioneVersoAuto());
 
-        // CONDIVIDI POSIZIONE (Nuovo!)
         view.findViewById(R.id.btn_share_location).setOnClickListener(v -> condividiPosizioneAuto());
 
 
-
-
-        // Trova il bottone Info
         com.google.android.material.button.MaterialButton btnInfo = view.findViewById(R.id.btn_info_app);
 
         btnInfo.setOnClickListener(v -> {
-            // 1. Infla il layout personalizzato
             android.view.View dialogView = android.view.LayoutInflater.from(requireContext())
                     .inflate(R.layout.dialog_app_info, null);
 
-            // 2. Crea il Dialogo
             android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
                     .setView(dialogView)
                     .create();
 
-            // 3. Rendi lo sfondo del dialogo trasparente (per vedere gli angoli tondi della CardView)
+            // Rende lo sfondo del dialogo trasparente per vedere gli angoli tondi della CardView
             if (dialog.getWindow() != null) {
                 dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
             }
 
-            // 4. Gestisci il bottone Chiudi dentro il layout personalizzato
             dialogView.findViewById(R.id.btn_chiudi_dialog).setOnClickListener(view1 -> dialog.dismiss());
 
-            // 5. Mostra
             dialog.show();
         });
     }
@@ -170,20 +152,8 @@ public class HomeFragment extends Fragment {
         dialog.show();
     }
 
-    private void mostraDialogInfoApp() {
-        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_app_info, null);
-        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
-                .setView(dialogView)
-                .create();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        }
-        dialogView.findViewById(R.id.btn_chiudi_dialog).setOnClickListener(v -> dialog.dismiss());
-        dialog.show();
-    }
 
-
-    // METODO SUPPORTO PER LA CONDIVISIONE
+    //Metodo per la condivisione delle coordinate relative alla posizione salvata
     private void condividiPosizioneAuto() {
         SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
         float lat = prefs.getFloat("car_lat", 0);
@@ -191,14 +161,13 @@ public class HomeFragment extends Fragment {
         String notaRaw = prefs.getString("note_auto", "");
 
         if (lat != 0 && lon != 0) {
-            // Pulizia della stringa: rimuoviamo i prefissi ridondanti
+            // Rimozione dei prefissi ridondanti che possono essere salvati nelle note dei parcheggi a pagamento
             String notaPulita = notaRaw.replace("Parcheggiato Presso :", "")
                     .replace("Nota:", "")
                     .trim();
 
             String uri = "https://www.google.com/maps/search/?api=1&query=" + lat + "," + lon;
 
-            // Costruiamo il messaggio finale
             StringBuilder messaggio = new StringBuilder();
             messaggio.append("🚗 La mia auto è parcheggiata qui:\n").append(uri);
 
@@ -223,25 +192,20 @@ public class HomeFragment extends Fragment {
         SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
         String notaAttuale = prefs.getString("note_auto", "");
 
-        // 1. Infla il layout personalizzato
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_note, null);
         com.google.android.material.textfield.TextInputEditText etNota = dialogView.findViewById(R.id.et_edit_nota_input);
 
-        // Imposta la nota attuale nel campo di testo
         etNota.setText(notaAttuale);
         if (notaAttuale != null) etNota.setSelection(notaAttuale.length());
 
-        // 2. Crea il Dialog
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
                 .setView(dialogView)
                 .create();
 
-        // 3. Sfondo trasparente per gli angoli tondi
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
         }
 
-        // 4. Listener Bottoni
         dialogView.findViewById(R.id.btn_cancel_note).setOnClickListener(v -> dialog.dismiss());
 
         dialogView.findViewById(R.id.btn_save_note_confirm).setOnClickListener(v -> {
@@ -249,13 +213,14 @@ public class HomeFragment extends Fragment {
             prefs.edit().putString("note_auto", nuovaNota).apply();
 
             Toast.makeText(requireContext(), "Nota aggiornata ✅", Toast.LENGTH_SHORT).show();
-            aggiornaStatoUI(); // Ricarica la UI per mostrare la nuova nota se necessario
+            aggiornaStatoUI();
             dialog.dismiss();
         });
 
         dialog.show();
     }
 
+    // Metodo per gestire i vari stati della classe HomeFragment
     private void aggiornaStatoUI() {
         SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
         boolean isNavigazioneAttiva = prefs.getBoolean("navigazione_attiva", false);
@@ -304,7 +269,6 @@ public class HomeFragment extends Fragment {
         mapPreviewNav.getController().setZoom(17.5);
         mapPreviewNav.getOverlays().clear();
 
-        // Marker della destinazione
         GeoPoint p = new GeoPoint(lat, lon);
         Marker m = new Marker(mapPreviewNav);
         m.setPosition(p);
@@ -314,7 +278,6 @@ public class HomeFragment extends Fragment {
         if(icon != null) m.setIcon(icon);
         mapPreviewNav.getOverlays().add(m);
 
-        // Aggiunta overlay posizione attuale su mappa navigazione
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             if (myLocationNavOverlay != null) {
                 myLocationNavOverlay.disableMyLocation();
@@ -386,10 +349,8 @@ public class HomeFragment extends Fragment {
         mapPreviewCurrent.invalidate();
     }
     private void mostraDialogEliminaAuto() {
-        // 1. Infla il layout
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_delete_confirmation, null);
 
-        // 2. CAMBIA I TESTI PER L'AUTO (Qui sta la magia)
         TextView txtTitolo = dialogView.findViewById(R.id.txt_dialog_title);
         TextView txtMessaggio = dialogView.findViewById(R.id.txt_dialog_msg);
 
@@ -400,7 +361,6 @@ public class HomeFragment extends Fragment {
             txtMessaggio.setText("Vuoi rimuovere l'auto salvata? Anche eventuali timer verranno cancellati.");
         }
 
-        // 3. Crea il Dialog
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
                 .setView(dialogView)
                 .create();
@@ -409,13 +369,10 @@ public class HomeFragment extends Fragment {
             dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         }
 
-        // 4. Listener Annulla
         dialogView.findViewById(R.id.btn_annulla_delete).setOnClickListener(v -> dialog.dismiss());
 
-        // 5. Listener Conferma Eliminazione
         dialogView.findViewById(R.id.btn_conferma_delete).setOnClickListener(v -> {
 
-            // A. Cancella Timer e Notifiche
             try {
                 android.app.AlarmManager am = (android.app.AlarmManager) requireContext().getSystemService(Context.ALARM_SERVICE);
                 android.content.Intent intent = new android.content.Intent(requireContext(), ParkingAlarmReceiver.class);
@@ -425,7 +382,6 @@ public class HomeFragment extends Fragment {
                 if (am != null) am.cancel(pi);
             } catch (Exception e) { e.printStackTrace(); }
 
-            // B. Pulisci SharedPreferences
             requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE).edit()
                     .remove("auto_salvata")
                     .remove("car_lat")
@@ -434,7 +390,6 @@ public class HomeFragment extends Fragment {
                     .remove("orario_scadenza_timer")
                     .apply();
 
-            // C. Aggiorna UI
             Toast.makeText(requireContext(), "Posizione auto rimossa", Toast.LENGTH_SHORT).show();
             aggiornaStatoUI();
             dialog.dismiss();
@@ -455,7 +410,7 @@ public class HomeFragment extends Fragment {
         SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
         float lat = prefs.getFloat("car_lat", 0);
         float lon = prefs.getFloat("car_lon", 0);
-        String nota = prefs.getString("note_auto", ""); // Recupera la nota salvata
+        String nota = prefs.getString("note_auto", "");
 
         if (lat == 0) return;
 
@@ -469,7 +424,7 @@ public class HomeFragment extends Fragment {
                 .putBoolean("navigazione_attiva", true)
                 .putFloat("dest_lat", lat)
                 .putFloat("dest_lon", lon)
-                .putString("dest_nota", nota) // Salva anche nelle preferenze per riaperture future
+                .putString("dest_nota", nota)
                 .apply();
 
         NavHostFragment.findNavController(this).navigate(R.id.action_home_to_nav, b);

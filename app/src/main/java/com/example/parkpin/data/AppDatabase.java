@@ -8,11 +8,11 @@ import com.example.parkpin.model.PosizioneAutoEntity;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
-
+//Classe per la gestione del database e la sua creazione
 @Database(entities = {PosizioneAutoEntity.class}, version =1)
 public abstract class AppDatabase extends RoomDatabase{
 
-    //Creazione e gestione del Dao da parte di Room
+    //Creazione e gestione del Dao da parte di Room, astrazione di SQLLite
     public abstract PosizioneAutoDao posizioneAutoDao();
 
     //Istanza per capire se il database è univoco
@@ -21,10 +21,10 @@ public abstract class AppDatabase extends RoomDatabase{
         if (INSTANCE == null) {
             synchronized (AppDatabase.class) {
                 if (INSTANCE == null) {
-                    // Qui Room crea il database fisico "parkpin_db"
+                    // Creazione database fisico "parkpin_db"
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                                     AppDatabase.class, "parkpin_db")
-                            .allowMainThreadQueries()//Ci permette di fare query senza bloccare tutto
+                            .allowMainThreadQueries()
                             .fallbackToDestructiveMigration()
                             .build();
                 }

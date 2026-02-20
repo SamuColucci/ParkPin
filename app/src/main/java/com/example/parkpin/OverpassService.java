@@ -6,7 +6,8 @@ import retrofit2.http.GET;
 import retrofit2.http.Query;
 
 public interface OverpassService {
-    // Overpass usa un linguaggio strano, noi gli passiamo la query come stringa "data"
+    // Endpoint per ottenere la lista dei parcheggi,
+    // specifica che la richiesta è di tipo get
     @GET("interpreter")
     Call<OverpassResponse> cercaParcheggi(@Query("data") String query);
 }

@@ -77,7 +77,6 @@ public class NavFragment extends Fragment {
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
                 if (isGranted) avviaNavigazioneGPS();
                 else {
-                    Toast.makeText(requireContext(), "Serve GPS!", Toast.LENGTH_SHORT).show();
                     tornaAllaHome();
                 }
             });
@@ -97,16 +96,13 @@ public class NavFragment extends Fragment {
         navigationCompleted = false;
         isPrimaDisegnoEffettuato = false;
 
-        // UI Setup
         txtDestinazione = view.findViewById(R.id.txt_nav_destinazione);
         TextView txtNavNota = view.findViewById(R.id.txt_nav_nota);
-
         txtDistanza = view.findViewById(R.id.txt_nav_distanza);
         txtTempo = view.findViewById(R.id.txt_nav_tempo);
         txtIstruzione = view.findViewById(R.id.txt_nav_istruzione);
         map = view.findViewById(R.id.map);
         progressLoader = view.findViewById(R.id.progress_loader_nav);
-
         loadingContainer = view.findViewById(R.id.loading_container);
         layoutError = view.findViewById(R.id.layout_error_retry);
 
@@ -116,7 +112,6 @@ public class NavFragment extends Fragment {
         String notaRecuperata = "";
 
         if (getArguments() != null && getArguments().containsKey("dest_lat")) {
-            // CASO 1: Navigazione appena avviata
             lat = getArguments().getFloat("dest_lat", 0);
             lon = getArguments().getFloat("dest_lon", 0);
             destinazioneNome = getArguments().getString("dest_nome", "Destinazione");
@@ -130,15 +125,12 @@ public class NavFragment extends Fragment {
                     .putString("dest_nota", notaRecuperata)
                     .putBoolean("dest_is_paid", isPagamento)
                     .apply();
-
         } else if (prefs.getBoolean("navigazione_attiva", false)) {
-            // CASO 2: Ripresa
             lat = prefs.getFloat("dest_lat", 0);
             lon = prefs.getFloat("dest_lon", 0);
             destinazioneNome = prefs.getString("dest_nome", "Destinazione");
             notaRecuperata = prefs.getString("dest_nota", "");
             isPagamento = prefs.getBoolean("dest_is_paid", false);
-
         } else {
             tornaAllaHome();
             return;
@@ -164,7 +156,6 @@ public class NavFragment extends Fragment {
         map.setMultiTouchControls(true);
         map.getController().setZoom(18.5);
         map.getController().setCenter(destinazionePoint);
-
         mettiMarkerDestinazione(destinazionePoint, destinazioneNome);
 
         view.findViewById(R.id.btn_stop_navigazione).setOnClickListener(v -> stopNavigazioneManuale());
@@ -218,7 +209,6 @@ public class NavFragment extends Fragment {
 
                 double distanzaMetri = posAttuale.distanceToAsDouble(destinazionePoint);
 
-                // SOGLIA ARRIVO: 40 metri
                 if (distanzaMetri < 40) {
                     if (isRitornoAllAuto && !notificaInviataArrivo) {
                         NotificationHelper.inviaNotificaArrivoImmediata(requireContext());
@@ -264,6 +254,7 @@ public class NavFragment extends Fragment {
 
         new Thread(() -> {
             try {
+                //OSRMRoadManager per il recupero dei dati stradali
                 OSRMRoadManager roadManager = new OSRMRoadManager(requireContext(), "ParkPin-UserAgent");
                 roadManager.setMean(isRitornoAllAuto ? OSRMRoadManager.MEAN_BY_FOOT : OSRMRoadManager.MEAN_BY_CAR);
 
@@ -327,7 +318,6 @@ public class NavFragment extends Fragment {
         map.invalidate();
     }
 
-    // --- MODIFICA QUI: GESTIONE ARRIVO CON DIALOG CUSTOM ---
     private void gestisciArrivo() {
         if (navigationCompleted) return;
         navigationCompleted = true;
@@ -338,38 +328,30 @@ public class NavFragment extends Fragment {
         SharedPreferences prefs = requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE);
 
         if (isRitornoAllAuto) {
-            // CASO A: Bentornato all'auto (Usa il dialog con la bandierina)
             mostraDialogArrivoAuto();
         } else {
-            // CASO B: Arrivo a un nuovo parcheggio (Usa il nuovo dialog con la "P")
             mostraDialogArrivoParcheggio(prefs);
         }
     }
     private void mostraDialogArrivoParcheggio(SharedPreferences prefs) {
-        // 1. Infla il layout del parcheggio raggiunto
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_parking_reached, null);
 
-        // 2. Crea il Dialog
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setView(dialogView)
-                .setCancelable(false) // Obbliga l'utente a scegliere
+                .setCancelable(false)
                 .create();
 
-        // 3. Sfondo trasparente per gli angoli tondi
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         }
 
-        // Recupero dati per il passaggio al fragment successivo
         float latArrivo = prefs.getFloat("dest_lat", 0);
         float lonArrivo = prefs.getFloat("dest_lon", 0);
         boolean isPaid = prefs.getBoolean("dest_is_paid", false);
 
-        // BOTTONE 1: SÌ, SALVA (Va alla schermata di salvataggio/timer)
         dialogView.findViewById(R.id.btn_save_here).setOnClickListener(v -> {
             dialog.dismiss();
 
-            // Rimuoviamo lo stato di navigazione attiva
             prefs.edit().remove("navigazione_attiva").apply();
 
             Bundle bundle = new Bundle();
@@ -377,15 +359,12 @@ public class NavFragment extends Fragment {
             bundle.putFloat("lon_arrivo", lonArrivo);
             bundle.putBoolean("is_paid", isPaid);
 
-            // Naviga alla schermata dove l'utente può aggiungere note e timer
             NavHostFragment.findNavController(this).navigate(R.id.action_nav_to_save, bundle);
         });
 
-        // BOTTONE 2: NO (Chiude tutto e torna alla Home)
         dialogView.findViewById(R.id.btn_skip_save).setOnClickListener(v -> {
             dialog.dismiss();
 
-            // Puliamo i dati temporanei della destinazione
             prefs.edit().remove("navigazione_attiva")
                     .remove("dest_lat").remove("dest_lon")
                     .remove("dest_nome").remove("dest_is_paid")
@@ -398,26 +377,20 @@ public class NavFragment extends Fragment {
         dialog.show();
     }
 
-    // --- NUOVO METODO: Apre il dialog dialog_target_reached.xml ---
     private void mostraDialogArrivoAuto() {
-        // 1. Infla il layout personalizzato
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_target_reached, null);
 
-        // 2. Crea il Dialog
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setView(dialogView)
-                .setCancelable(false) // Obbliga l'utente a premere Completato
+                .setCancelable(false)
                 .create();
 
-        // 3. Sfondo trasparente per i bordi arrotondati
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         }
 
-        // 4. Gestione Bottone "COMPLETATO"
         dialogView.findViewById(R.id.btn_finish_arrival).setOnClickListener(v -> {
 
-            // A. Cancella l'allarme/notifica
             cancellaAllarmePosizione(requireContext());
             try {
                 android.app.AlarmManager am = (android.app.AlarmManager) requireContext().getSystemService(Context.ALARM_SERVICE);
@@ -429,7 +402,6 @@ public class NavFragment extends Fragment {
                 if (am != null) am.cancel(pi);
             } catch (Exception e) {}
 
-            // B. Pulisci TUTTO (Navigazione + Auto Salvata + Timer)
             requireActivity().getSharedPreferences("ParkPinNav", Context.MODE_PRIVATE).edit()
                     .remove("navigazione_attiva")
                     .remove("auto_salvata")

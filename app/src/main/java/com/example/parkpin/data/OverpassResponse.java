@@ -2,7 +2,7 @@ package com.example.parkpin.data;
 
 import com.google.gson.annotations.SerializedName;
 import java.util.List;
-
+//Classe per il parsing delle risposte API
 public class OverpassResponse {
     @SerializedName("elements")
     public List<Elemento> elementi;
@@ -20,28 +20,22 @@ public class OverpassResponse {
         public double lon;
     }
 
+    //Classe che permette di mappare il campo JSON con una variabile Java
     public static class Tags {
-        // Mappiamo il campo JSON "name" alla variabile Java "name"
         @SerializedName("name")
         public String name;
 
-        // Mappiamo "addr:street" (che contiene i due punti) alla variabile "street"
         @SerializedName("addr:street")
         public String street;
 
-        // Mappiamo il costo
         @SerializedName("fee")
         public String fee;
 
-        // Tipo di parcheggio (strada, garage, surface)
         @SerializedName("parking")
         public String parking;
 
-        // Operatore (es. Saba, Comune...) utile se manca il nome
         @SerializedName("operator")
         public String operator;
 
-        @SerializedName("capacity")
-        public String capacity;
     }
 }
