@@ -54,6 +54,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+/**
+  - Mostrare la mappa per permettere all'utente di posizionare il "pin" dell'auto
+  trascinandolo o facendo doppio tap.
+  - Scaricare e mostrare i parcheggi nelle vicinanze, permettendo all'utente di selezionarne
+  uno preciso.
+  - Salvare le coordinate finali e le note utente nelle SharedPreferences per ritrovare l'auto in seguito.
+ */
+
 public class SaveCarFragment extends Fragment implements LocationListener {
 
     public interface OverpassService {

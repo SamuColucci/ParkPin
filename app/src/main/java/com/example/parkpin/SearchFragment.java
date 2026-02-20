@@ -56,6 +56,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+  - Mostrare la mappa interattiva centrata sulla posizione dell'utente.
+  - Scaricare i dati dei parcheggi circostanti (raggio di 2km) interrogando l'API Overpass,
+  - Filtrare i risultati e visualizzarli contemporaneamente come marker colorati sulla mappa
+    e come lista testuale a scomparsa.
+  - Al tocco di un marker o al doppio tap sulla mappa,
+  chiede conferma all'utente e avvia il flusso di navigazione (NavFragment).
+ */
+
 public class SearchFragment extends Fragment implements LocationListener {
 
     public interface OverpassService {

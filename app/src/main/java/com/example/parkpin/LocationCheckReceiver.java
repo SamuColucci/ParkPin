@@ -11,6 +11,14 @@ import android.util.Log;
 
 import org.osmdroid.util.GeoPoint;
 
+/**
+  - Anche se l'app è chiusa o in background controlla
+    la distanza dell'utente dalla destinazione salvata.
+  - Se l'utente arriva a meno di 50 metri dall'auto, lancia la notifica di arrivo
+  e disattiva la navigazione in background.
+  - In caso contrario, riprogramma automaticamente il controllo successivo.
+ */
+
 public class LocationCheckReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {

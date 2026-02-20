@@ -11,6 +11,12 @@ import android.os.Build;
 import android.widget.Toast;
 import java.util.Calendar;
 
+/**
+  - Programmare (e annullare) il timer del parcheggio tramite AlarmManager,
+  - Inviare la notifica "Sei arrivato all'auto".
+  - Pianificare i controlli GPS ogni 30 secondi in background
+   per rilevare la vicinanza all'auto anche quando l'app è ridotta a icona.
+ */
 public class NotificationHelper {
 
     private static long lastNotificationTime = 0;

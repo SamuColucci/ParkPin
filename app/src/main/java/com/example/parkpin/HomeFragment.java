@@ -29,12 +29,15 @@ import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
-// Classe centrale dell'app divisa in base ai vari stati definiti attraverso
-// Interazione con l'utente:
-// Utente non ha ancora parcheggiato/salvato la posizione
-// Utente ha salvato una posizione da raggiungere
-// Utente ha avviato la navigazione
-// Utilizza OSMAndroid per mostrare la preview delle mappe
+
+/*
+ - Classe centrale dell'app divisa in base ai vari stati definiti attraverso
+ - Interazione con l'utente:
+  - Utente non ha ancora parcheggiato/salvato la posizione
+  - Utente ha salvato una posizione da raggiungere
+  - Utente ha avviato la navigazione
+ - Utilizza OSMAndroid per mostrare la preview delle mappe
+ */
 public class HomeFragment extends Fragment {
 
     private LinearLayout layoutNormal, layoutNav, layoutRitorno;

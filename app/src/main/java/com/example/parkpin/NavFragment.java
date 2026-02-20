@@ -46,6 +46,15 @@ import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 
 import java.util.ArrayList;
 
+/**
+  - Disegna il percorso sulla mappa e tracciare il movimento GPS dell'utente.
+  - Distinguere due modalità di guida:
+       - navigazione verso un "Nuovo Parcheggio" (in auto)
+       - "Ritorno all'Auto" (a piedi).
+  - Rilevare automaticamente l'arrivo a destinazione (distanza < 40m)
+  - Salvare lo stato per mantenere la navigazione attiva in background
+ */
+
 public class NavFragment extends Fragment {
 
     private MapView map = null;

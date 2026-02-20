@@ -12,6 +12,14 @@ import android.graphics.Color;
 import android.os.Build;
 import androidx.core.app.NotificationCompat;
 
+/**
+  - Intercettare il segnale inviato dall'AlarmManager (pianificato dal NotificationHelper)
+  10 minuti prima della scadenza del parcheggio.
+  - Creare e mostrare all'utente una notifica "Scadenza Parcheggio!"
+  - Se l'utente clicca sulla notifica,
+  riapre immediatamente l'app (MainActivity) per controllare la mappa.
+ */
+
 public class ParkingAlarmReceiver extends BroadcastReceiver {
     private static final String CHANNEL_ID = "parking_channel";
 

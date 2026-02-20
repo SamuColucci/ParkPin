@@ -34,6 +34,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+  - Gestisce la UI a tutto schermo (Edge-to-Edge).
+  - Richiedere i permessi fondamentali al primo avvio (GPS, Notifiche).
+  - Monitorare costantemente il GPS: se disattivato o senza permessi,
+  blocca la navigazione mostrando un Dialog obbligatorio.
+ */
+
 public class MainActivity extends AppCompatActivity {
 
     private AlertDialog gpsDialog;
